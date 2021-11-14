@@ -1,114 +1,183 @@
-# Deviant CMakeLists.txt
+cmake_minimum_required(VERSION 3.14)
+project(Deviant VERSION 1.0.0)
 
-# To get started on a new plugin, copy this entire folder (containing this file and C++ sources) to
-# a convenient location, and then start making modifications.
+# By default we don't want schemes to be made for modules, etc
+set(CMAKE_XCODE_GENERATE_SCHEME OFF)
+set(CMAKE_SUPPRESS_REGENERATION true)
+set(CMAKE_OSX_DEPLOYMENT_TARGET 10.9)
+set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64")
+set(CMAKE_XCODE_ATTRIBUTE_OTHER_LDFLAGS "-Xlinker -headerpad -Xlinker 578")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake.modules/")
 
-# The first line of any CMake project should be a call to `cmake_minimum_required`, which checks
-# that the installed CMake will be able to understand the following CMakeLists, and ensures that
-# CMake's behaviour is compatible with the named version. This is a standard CMake command, so more
-# information can be found in the CMake docs.
+# Adds all the module sources so they appear correctly in the IDE
+# This needs to be set before JUCE is added as a sub-dir
+set_property(GLOBAL PROPERTY USE_FOLDERS YES)
+set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "Targets")
 
-cmake_minimum_required(VERSION 3.15)
+# Create a /Modules directory with all the JUCE Module code
+option(JUCE_ENABLE_MODULE_SOURCE_GROUPS "Show all module sources in IDE projects" ON)
 
-# The top-level CMakeLists.txt file for a project must contain a literal, direct call to the
-# `project()` command. `project()` sets up some helpful variables that describe source/binary
-# directories, and the current project version. This is a standard CMake command.
+get_filename_component(CODE ../../ ABSOLUTE)
+#include_directories(${CODE}/SDKs/VST3_SDK/VST2_SDK)
 
-project(DEVIANT VERSION 0.0.1)
+IF (WIN32)
+    set(AAX_COPY_LOCATION "C:/Program Files/Common Files/Avid/Audio/Plug-Ins")
+    set(VST_COPY_LOCATION "C:/Program Files (x86)/Common Files/VST")
+    set(VST3_COPY_LOCATION "C:/Program Files/Common Files/VST3")
+    set(AUDIO_PROJECTS_LOCATION "C:/Users/frye/Music/Projects")
 
-# If you've installed JUCE somehow (via a package manager, or directly using the CMake install
-# target), you'll need to tell this project that it depends on the installed copy of JUCE. If you've
-# included JUCE directly in your source tree (perhaps as a submodule), you'll need to tell CMake to
-# include that subdirectory as part of the build.
+ELSE()
+    set(AAX_COPY_LOCATION "/Library/Application Support/Avid/Audio/Plug-Ins")
+    set(VST_COPY_LOCATION "/Library/Audio/Plug-Ins/VST")
+    set(VST3_COPY_LOCATION "/Library/Audio/Plug-Ins/VST3")
+    set(AUDIO_PROJECTS_LOCATION "/Users/omar/Music/Projects/Reaper")
+ENDIF()
 
-find_package(JUCE CONFIG REQUIRED)        # If you've installed JUCE to your system
-# or
-# add_subdirectory(JUCE)                    # If you've put JUCE in a subdirectory called JUCE
-
-# If you are building a VST2 or AAX plugin, CMake needs to be told where to find these SDKs on your
-# system. This setup should be done before calling `juce_add_plugin`.
-
-# juce_set_vst2_sdk_path(...)
-# juce_set_aax_sdk_path(...)
-
-# `juce_add_plugin` adds a static library target with the name passed as the first argument
-# (AudioPluginExample here). This target is a normal CMake target, but has a lot of extra properties set
-# up by default. As well as this shared code static library, this function adds targets for each of
-# the formats specified by the FORMATS arguments. This function accepts many optional arguments.
-# Check the readme at `docs/CMake API.md` in the JUCE repo for the full list.
-
+# file(READ "${CMAKE_CURRENT_SOURCE_DIR}/plistToMerge.plist" plist_content_to_merge)
+add_subdirectory("$ENV{HOME}/Documents/JUCE" JUCE)
+juce_set_vst2_sdk_path($ENV{HOME}/CODE/SDKs/VST3_SDK/VST2_SDK)
+juce_set_aax_sdk_path($ENV{HOME}/CODE/SDKs/AAX_SDK)
 juce_add_plugin(Deviant
-    # VERSION ...                               # Set this if the plugin version is different to the project version
-    IS_SYNTH FALSE                       	# Is this a synth or an effect?
-    COPY_PLUGIN_AFTER_BUILD TRUE        	# Should the plugin be installed to a default location after building?
-    PLUGIN_MANUFACTURER_CODE sTic               # A four-character manufacturer id with at least one upper-case character
-    PLUGIN_CODE iCle                            # A unique four-character plugin id with at least one upper-case character
-    FORMATS AU VST3                  		# The formats to build. Other valid formats are: AAX Unity VST AU AUv3
-    COMPANY_NAME "Sadistic Audio"               # Specify the name of the plugin's author    
-    PRODUCT_NAME "Deviant"
     BUNDLE_ID "com.sadisticaudio.Deviant"
+    PLUGIN_MANUFACTURER_CODE sTic
+    PLUGIN_CODE iAnt
+    COMPANY_NAME "Sadistic Audio"
+    PRODUCT_NAME "Deviant"
     COMPANY_COPYRIGHT "copyright Sadistic Algorithms, LLC, 2020"
-    COMPANY_EMAIL "www.sadisticaudio.com"
+    COMPANY_EMAIL "support@sadisticaudio.com"
+    DOCUMENT_EXTENSIONS xml wav
+    FORMATS AU VST VST3 AAX
+    COPY_PLUGIN_AFTER_BUILD TRUE
+    AU_COPY_DIR "/Library/Audio/Plug-Ins/Components"
+    AAX_COPY_DIR "${AAX_COPY_LOCATION}"
+    VST_COPY_DIR "${VST_COPY_LOCATION}"
+    VST3_COPY_DIR "${VST3_COPY_LOCATION}"
     HARDENED_RUNTIME_ENABLED TRUE
-    DESCRIPTION "Deviant is an audio effect."
-    VST3_CATEGORIES Fx Filter
-    AU_MAIN_TYPE kAudioUnitType_Effect)
+    IS_SYNTH FALSE
+    EDITOR_WANTS_KEYBOARD_FOCUS FALSE
+    DESCRIPTION "Deviant Sidechain EQ"
+    VST2_CATEGORY kPlugCategEffect
+    VST3_CATEGORIES Fx Analyzer EQ Filter
+    AU_MAIN_TYPE kAudioUnitType_Effect
+    AAX_CATEGORY AAX_ePlugInCategory_EQ)
 
-# `juce_generate_juce_header` will create a JuceHeader.h for a given target, which will be generated
-# into your build tree. This should be included with `#include <JuceHeader.h>`. The include path for
-# this header will be automatically added to the target. The main function of the JuceHeader is to
-# include all your JUCE module headers; if you're happy to include module headers directly, you
-# probably don't need to call this.
+file(GLOB_RECURSE bundle_resources RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "Resources/*")
 
-juce_generate_juce_header(Deviant)
+file(GLOB SourceFiles
+    Source/*.h
+    Source/*.cpp
+    ${CODE}/sadistic/Source/*.h
+    ${CODE}/sadistic/Source/*.cpp)
 
-# `target_sources` adds source files to a target. We pass the target that needs the sources as the
-# first argument, then a visibility parameter for the sources (PRIVATE is normally best practice,
-# although it doesn't really affect executable targets). Finally, we supply a list of source files
-# that will be built into the target. This is a standard CMake command.
+target_sources(Deviant PRIVATE ${SourceFiles})
+source_group(TREE ${CODE}/sadistic PREFIX "" FILES ${SourceFiles})
+# Move the INTERFACE auto-created JUCE library stuff into its own folder
+source_group("JUCE Library Code" REGULAR_EXPRESSION "juce_")
+# This cleans up the folder organization, especially on Xcode.
+# It tucks the Plugin varieties into a "Targets" folder and generate an Xcode Scheme manually
+# since Xcode scheme generation is turned off to limit noise
+# Not all plugin types (au, vst) available on each build type (win, macos, linux)
+foreach(target Deviant_AAX Deviant_AU Deviant_VST Deviant_VST3 Deviant_All)
+    if(TARGET ${target})
+        set_target_properties(${target} PROPERTIES 
+            FOLDER "Targets"
+            XCODE_GENERATE_SCHEME ON
+            )
+    endif()
+endforeach()
 
-target_sources(Deviant PRIVATE
-    PluginEditor.cpp
-    PluginProcessor.cpp
-    Images.cpp
-    sadistic.cpp
-    PluginEditor.h
-    PluginProcessor.h
-    Images.h
-    sadistic.h)
+#set(AAX_BUNDLE "/Library/Application Support/Avid/Audio/Plug-Ins/Deviant.aaxplugin")
 
-# `target_compile_definitions` adds some preprocessor definitions to our target. In a Projucer
+foreach(target Deviant_AAX)
+    if(TARGET ${target})
+        set_target_properties(${target} PROPERTIES 
+            OSX_ARCHITECTURES "x86_64"
+            XCODE_SCHEME_EXECUTABLE "/Applications/Pro Tools Developer.app")
+    endif()
+endforeach()
+
+foreach(target Deviant_AU Deviant_VST Deviant_VST3)
+    if(TARGET ${target})
+        set_target_properties(${target} PROPERTIES 
+            XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "Developer ID Application: Benjamin Kelley (NXW2SG7JJ4)"
+            XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "NXW2SG7JJ4"
+            XCODE_ATTRIBUTE_ENABLE_HARDENED_RUNTIME YES
+            XCODE_ATTRIBUTE_OTHER_CODE_SIGN_FLAGS --timestamp
+            OSX_ARCHITECTURES "arm64;x86_64"
+            XCODE_SCHEME_EXECUTABLE "/Applications/REAPER64.app"
+            XCODE_SCHEME_ARGUMENTS "${AUDIO_PROJECTS_LOCATION}/DeviantTestRadiohead/DeviantTestRadiohead.RPP")
+    endif()
+endforeach()
+
+add_custom_command(
+TARGET Deviant_AAX POST_BUILD COMMAND 
+COMMAND rm -f ~/Library/Preferences/Avid/Pro\ Tools/InstalledAAXPlugIns
+)
+
+juce_add_binary_data(BinaryData HEADER_NAME SadisticData.h NAMESPACE Data SOURCES ../Resources/saLogo.svg  ../Resources/leninSmall.svg ../Resources/leninSmall-1.svg ../Resources/DRIVE.png ../Resources/SATURATE.png ../Resources/SALOGOBlue.svg ../Resources/defaultWaveTable.rawFloatData ../Resources/shadowsIntoLight.ttf ../Resources/droid.otf ../Resources/empiricalLeft.svg ../Resources/empiricalLeftPlain.svg ../Resources/empiricalRight.svg ../Resources/empiricalRightPlain.svg)
+
+# juce_add_bundle_resources_directory(Deviant_AAX Resources)
+
+add_library(ALL_IPP INTERFACE)
+IF (WIN32)
+	set(IPP_ROOT "C:/Program Files (x86)/Intel/oneAPI/ipp/2021.1.1")
+	set (IPP_LIB "${IPP_ROOT}/lib/intel64")
+ELSE()
+	set(IPP_ROOT "/opt/intel/oneapi/ipp/2021.1.1")
+	set (IPP_LIB "${IPP_ROOT}/lib")
+ENDIF()
+
+target_include_directories(ALL_IPP INTERFACE "${IPP_ROOT}/include")
+
+add_library(ippi    STATIC IMPORTED GLOBAL)
+add_library(ipps    STATIC IMPORTED GLOBAL)
+add_library(ippvm   STATIC IMPORTED GLOBAL)
+add_library(ippcore STATIC IMPORTED GLOBAL)
+
+IF (WIN32)
+	set_target_properties(ippi    PROPERTIES IMPORTED_LOCATION ${IPP_LIB}/ippi.lib)
+	set_target_properties(ipps    PROPERTIES IMPORTED_LOCATION ${IPP_LIB}/ipps.lib)
+	set_target_properties(ippvm   PROPERTIES IMPORTED_LOCATION ${IPP_LIB}/ippvm.lib)
+	set_target_properties(ippcore PROPERTIES IMPORTED_LOCATION ${IPP_LIB}/ippcore.lib)
+ELSE()
+	set_target_properties(ippi    PROPERTIES IMPORTED_LOCATION ${IPP_LIB}/libippi.a    OSX_ARCHITECTURES x86_64)
+	set_target_properties(ipps    PROPERTIES IMPORTED_LOCATION ${IPP_LIB}/libipps.a    OSX_ARCHITECTURES x86_64)
+	set_target_properties(ippvm   PROPERTIES IMPORTED_LOCATION ${IPP_LIB}/libippvm.a   OSX_ARCHITECTURES x86_64)
+	set_target_properties(ippcore PROPERTIES IMPORTED_LOCATION ${IPP_LIB}/libippcore.a OSX_ARCHITECTURES x86_64)
+ENDIF()
+
+target_sources(Deviant_AAX PRIVATE ${bundle_resources})
+set_source_files_properties(${bundle_resources} PROPERTIES
+  MACOSX_PACKAGE_LOCATION "Resources"
+)
+source_group("Resources" FILES ${bundle_resources})
+
+#`target_compile_definitions` adds some preprocessor definitions to our target. In a Projucer
 # project, these might be passed in the 'Preprocessor Definitions' field. JUCE modules also make use
 # of compile definitions to switch certain features on/off, so if there's a particular feature you
-# need that's not on by default, check the module header for the correct flag to set here. These
-# definitions will be visible both to your code, and also the JUCE module code, so for new
+# need that's not on by default, check the module header for the correctvisible code, so for new
 # definitions, pick unique names that are unlikely to collide! This is a standard CMake command.
-
-target_compile_definitions(Deviant
-    PUBLIC
-    # JUCE_WEB_BROWSER and JUCE_USE_CURL would be on by default, but you might not need them.
+target_compile_features(Deviant PRIVATE cxx_std_20)
+target_compile_definitions(Deviant PUBLIC
     JUCE_WEB_BROWSER=0  # If you remove this, add `NEEDS_WEB_BROWSER TRUE` to the `juce_add_plugin` call
     JUCE_USE_CURL=0     # If you remove this, add `NEEDS_CURL TRUE` to the `juce_add_plugin` call
-    JUCE_VST3_CAN_REPLACE_VST2=0
-    JUCE_USE_DIRECTWRITE=0)
+    JUCE_COPY_PLUGIN_AFTER_BUILD=TRUE
+    JUCE_OPENGL3=1
+    JUCE_USE_STUDIO_ONE_COMPATIBLE_PARAMETERS=1
+    )
 
-# If your target needs extra binary assets, you can add them here. The first argument is the name of
-# a new static library target that will include all the binary resources. There is an optional
-# `NAMESPACE` argument that can specify the namespace of the generated binary data class. Finally,
-# the SOURCES argument should be followed by a list of source files that should be built into the
-# static library. These source files can be of any kind (wav data, images, fonts, icons etc.).
-# Conversion to binary-data will happen when your target is built.
-
-# juce_add_binary_data(AudioPluginData SOURCES ...)
-
-# `target_link_libraries` links libraries and JUCE modules to other libraries or executables. Here,
-# we're linking our executable target to the `juce::juce_audio_utils` module. Inter-module
-# dependencies are resolved automatically, so `juce_core`, `juce_events` and so on will also be
-# linked automatically. If we'd generated a binary data target above, we would need to link to it
-# here too. This is a standard CMake command.
+target_link_libraries(ALL_IPP INTERFACE ippi ipps ippvm ippcore)
 
 target_link_libraries(Deviant PRIVATE
-    # AudioPluginData           # If we'd created a binary data target, we'd link to it here
+    BinaryData
     juce::juce_audio_utils
     juce::juce_audio_plugin_client
-    juce::juce_dsp)
+    juce::juce_product_unlocking
+    juce::juce_dsp
+    juce::juce_opengl
+    ALL_IPP
+  PUBLIC
+    juce::juce_recommended_config_flags
+    juce::juce_recommended_lto_flags
+    juce::juce_recommended_warning_flags
+ )

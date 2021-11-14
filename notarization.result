@@ -1,0 +1,116 @@
+2021-06-30 17:18:13.191 altool[1143:74307]  Error:
+[2021-06-30 17:18:09 CDT] <main>  INFO: Configuring logging...
+[2021-06-30 17:18:09 CDT] <main>  INFO: Logging level set to eXtreme
+[2021-06-30 17:18:09 CDT] <main>  INFO: Transporter is searching for new software components.
+[2021-06-30 17:18:09 CDT] <main>  INFO: INFO: using cached repository.xml file.
+[2021-06-30 17:18:09 CDT] <main>  INFO: Update check complete.
+Jun 30, 2021 5:18:11 PM org.apache.tika.config.InitializableProblemHandler$3 handleInitializableProblem
+WARNING: Tesseract OCR is installed and will be automatically applied to image files unless
+you've excluded the TesseractOCRParser from the default parser.
+Tesseract may dramatically slow down content extraction (TIKA-2359).
+As of Tika 1.15 (and prior versions), Tesseract is automatically called.
+In future versions of Tika, users may need to turn the TesseractOCRParser on via TikaConfig.
+[2021-06-30 17:18:11 CDT] <main> DEBUG: Attempting refresh of configuration data from https://contentdelivery.itunes.apple.com/transporter/Defaults.properties
+[2021-06-30 17:18:12 CDT] <main> DEBUG: Configuration refresh successful.
+[2021-06-30 17:18:12 CDT] <main> DEBUG: Saving configuration to local path: /Users/omar/Library/Caches/com.apple.amp.itmstransporter/Defaults.properties
+[2021-06-30 17:18:12 CDT] <main>  INFO: iTMSTransporter : iTunes Store Transporter [2.1.0]
+[2021-06-30 17:18:12 CDT] <main>  INFO: OS identifier: Mac OS X 10.13.6 (x86_64); jvm=25.71-b02; jre=1.8.0-u131-b11-iTMSTransporter-b02
+[2021-06-30 17:18:12 CDT] <main>  INFO: Memory: [JVM] 1072M free, 1111M total, 1820M max [System] (Physical) 2023M free, 8192M total (Swap) 0 free, 0 total
+[2021-06-30 17:18:12 CDT] <main>  INFO: Client: altool 1.1 (1138)
+[2021-06-30 17:18:12 CDT] <main>  INFO: Upload mode selected.
+[2021-06-30 17:18:12 CDT] <main> DBG-X: Memory: [JVM] 1062M free, 1111M total, 1820M max [System] (Physical) 2023M free, 8192M total (Swap) 0 free, 0 total
+[2021-06-30 17:18:12 CDT] <main> DBG-X: Using operation named: authenticateForTransportDiscovery
+[2021-06-30 17:18:12 CDT] <main> DBG-X: Apple's web service operation input parameters:
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter Application = iTMSTransporter
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter BaseVersion = 1.11.0
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter Client = altool
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter ClientVersion = 1.1 (1138)
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter OSIdentifier = Mac OS X 10.13.6 (x86_64); jvm=25.71-b02; jre=1.8.0-u131-b11-iTMSTransporter-b02
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter StatisticsClientStartDateTimeZoneISO = 2021-06-30T17:18:12-05:00
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter StatisticsPreviousCallDurationInSecs = 0.264456876
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter TransporterArguments = -m upload -u frye@sadisticaudio.com -vp json -sessionid @env:459C40BB-DB32-4170-83DD-639BAC759A77 -sharedsecret **hidden value** -f /var/folders/wr/2g4jjlc50bn2qhzkhln0sf8m0000gn/T/77856529-BD76-4964-9F41-7775679268D1/Untitled.itmsp -indicator true -v eXtreme -Dtransporter.client=altool -Dtransporter.client.version=1.1 (1138)
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter Version = 2.1.0
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter iTMSTransporterMode = upload
+[2021-06-30 17:18:12 CDT] <main>  INFO: id = 20210630171812-315
+[2021-06-30 17:18:12 CDT] <main>  INFO: iTMSTransporter Correlation Key: 920fcd31-a2ec-4040-9d6d-06f4f744b27e-0001
+[2021-06-30 17:18:12 CDT] <main> DEBUG: DataCenter: contentdelivery02.itunes.apple.com
+[2021-06-30 17:18:12 CDT] <main> DBG-X: Apple's web service operation return value:
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter EnableJWTForAllCalls = false
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter PreferredTransports = [HTTP, Signiant, Aspera, DAV]
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter TransportHosts.Signiant = [sgr603.apple.com:44001, sgr604.apple.com:44001, sgr602.apple.com:44001, sgr601.apple.com:44001]
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter SessionExpiration = 2021-07-04T22:18:12.527Z
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter TransportHosts.DAV = [itmsdav.apple.com:443]
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter TransportHosts.Aspera = [vgr501.apple.com:33001, vgr504.apple.com:33001, vgr503.apple.com:33001, vgr502.apple.com:33001]
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter ShouldUseRESTAPIs = false
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter StreamingSettings = {LogStreamingEnabled=true, MultipartUploadsEnabled=true, AssetDescriptionStreamingEnabled=false}
+[2021-06-30 17:18:12 CDT] <main>  INFO: Transporter's command line arguments are: -m upload -u frye@sadisticaudio.com -vp json -sessionid @env:459C40BB-DB32-4170-83DD-639BAC759A77 -sharedsecret **hidden value** -f /var/folders/wr/2g4jjlc50bn2qhzkhln0sf8m0000gn/T/77856529-BD76-4964-9F41-7775679268D1/Untitled.itmsp -indicator true -v eXtreme -Dtransporter.client=altool -Dtransporter.client.version=1.1 (1138)
+[2021-06-30 17:18:12 CDT] <main>  INFO: Examining the package at: /var/folders/wr/2g4jjlc50bn2qhzkhln0sf8m0000gn/T/77856529-BD76-4964-9F41-7775679268D1/Untitled.itmsp
+[2021-06-30 17:18:12 CDT] <main>  INFO: Ensuring that package has well formed metadata file...
+[2021-06-30 17:18:12 CDT] <main> DEBUG: Getting case-sensitive metadata xml filename...
+[2021-06-30 17:18:12 CDT] <main>  INFO: Gathering the list of valid files from the package ...
+[2021-06-30 17:18:12 CDT] <main> DEBUG:   sadisticaudioDeviant.pkg will be verified by Apple's web service to determine if it is a valid file.
+[2021-06-30 17:18:12 CDT] <main> DEBUG:   metadata.xml will be verified by Apple's web service to determine if it is a valid file.
+[2021-06-30 17:18:12 CDT] <main>  INFO: Finished gathering the list of valid files from the package.
+[2021-06-30 17:18:12 CDT] <main> DEBUG:   Case-sensitive metadata filename is: metadata.xml
+[2021-06-30 17:18:12 CDT] <main>  INFO: JSON:{"msg":{"phase":"Upload","description":"Analyzing metadata","index":0},"messageType":"VerifyProgress"}
+[2021-06-30 17:18:12 CDT] <main>  INFO: Performing authentication of package Untitled.itmsp ...
+[2021-06-30 17:18:12 CDT] <main> DBG-X: Memory: [JVM] 1048M free, 1111M total, 1820M max [System] (Physical) 2011M free, 8192M total (Swap) 0 free, 0 total
+[2021-06-30 17:18:12 CDT] <main>  INFO: JSON:{"msg":{"phase":"Upload","count":2,"description":"Analyzing metadata","index":1},"messageType":"VerifyProgress"}
+[2021-06-30 17:18:12 CDT] <main> DBG-X: Deflated 546 bytes to 424
+[2021-06-30 17:18:12 CDT] <main> DBG-X: Using operation named: validateMetadata
+[2021-06-30 17:18:12 CDT] <main> DBG-X: Apple's web service operation input parameters:
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter Application = iTMSTransporter
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter BaseVersion = 1.11.0
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter Client = altool
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter ClientVersion = 1.1 (1138)
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter Files = [sadisticaudioDeviant.pkg, metadata.xml]
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter Metadata = <?xml version="1.0" encoding="UTF-8"?>
+<package version="software5.9" xmlns="http://apple.com/itunes/importer">
+    <software_assets
+        app_platform="osx"
+        primary_bundle_identifier="com.sadisticaudio.Deviant">
+        <asset type="developer-id-package">
+            <data_file>
+                <file_name>sadisticaudioDeviant.pkg</file_name>
+                <checksum type="md5">8af2866270b418b880359a6f61c115f5</checksum>
+                <size>20936361</size>
+            </data_file>
+        </asset>
+    </software_assets>
+</package>
+
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter MetadataChecksum = eaa1f1d57831d0f862eb14c742a80ef7
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter MetadataCompressed = (suppressed)
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter MetadataInfo = {app_platform=osx, primary_bundle_identifier=com.sadisticaudio.Deviant, device_id=, bundle_identifier=, packageVersion=software5.9, apple_id=, asset_types=[developer-id-package], bundle_version=, bundle_short_version_string=}
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter OSIdentifier = Mac OS X 10.13.6 (x86_64); jvm=25.71-b02; jre=1.8.0-u131-b11-iTMSTransporter-b02
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter PackageName = Untitled.itmsp
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter PackageSize = 20936907
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter StatisticsClientStartDateTimeZoneISO = 2021-06-30T17:18:12-05:00
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter TransporterArguments = -m upload -u frye@sadisticaudio.com -vp json -sessionid @env:459C40BB-DB32-4170-83DD-639BAC759A77 -sharedsecret **hidden value** -f /var/folders/wr/2g4jjlc50bn2qhzkhln0sf8m0000gn/T/77856529-BD76-4964-9F41-7775679268D1/Untitled.itmsp -indicator true -v eXtreme -Dtransporter.client=altool -Dtransporter.client.version=1.1 (1138)
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter Version = 2.1.0
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter iTMSTransporterMode = upload
+[2021-06-30 17:18:12 CDT] <main>  INFO: id = 20210630171812-273
+[2021-06-30 17:18:12 CDT] <main>  INFO: iTMSTransporter Correlation Key: 920fcd31-a2ec-4040-9d6d-06f4f744b27e-0001
+[2021-06-30 17:18:12 CDT] <main> DEBUG: DataCenter: contentdelivery02.itunes.apple.com
+[2021-06-30 17:18:12 CDT] <main> DBG-X: Apple's web service operation return value:
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter Errors = [You must first sign the relevant contracts online. (1048)]
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter EnableJWTForAllCalls = false
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter RestartClient = false
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter ErrorCode = 1048
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter ErrorMessage = You must first sign the relevant contracts online. (1048)
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter ShouldUseRESTAPIs = false
+[2021-06-30 17:18:12 CDT] <main> DBG-X:   parameter Success = false
+[2021-06-30 17:18:12 CDT] <main> ERROR: You must first sign the relevant contracts online. (1048)
+[2021-06-30 17:18:12 CDT] <main> DBG-X: The error code is: 1048
+[2021-06-30 17:18:12 CDT] <main>  INFO: JSON:{"msg":{"phase":"Upload","count":2,"description":"Operation failed","index":2},"messageType":"VerifyProgress"}
+[2021-06-30 17:18:13 CDT] <main> DBG-X: Returning 1
+2021-06-30 17:18:13.192 altool[1143:74307]  Out:
+
+
+
+Package Summary:
+ 
+1 package(s) were not uploaded because they had problems:
+	/var/folders/wr/2g4jjlc50bn2qhzkhln0sf8m0000gn/T/77856529-BD76-4964-9F41-7775679268D1/Untitled.itmsp - Error Messages:
+		You must first sign the relevant contracts online. (1048)
+2021-06-30 17:18:13.288 altool[1143:74293] *** Error: You must first sign the relevant contracts online. (1048)
