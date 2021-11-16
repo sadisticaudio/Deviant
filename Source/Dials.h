@@ -203,18 +203,18 @@ namespace sadistic {
         sadistic::TransLabel valueLabel, suffixLabel;
         EmpiricalSlider knobs[numSliders] { { true, true }, { true, true }, { false, true }, { false, true }, { true, true }, { true, true, true }, { false, true }, { false, true, true }, { true, true, true }, { false, true, true }, { true, true, true }, { false, true, true } };
         APVTS::SliderAttachment attachments[numSliders] {
-            { apvts, { pad.wavePadType + "AtanDrive" },             knobs[0] },
-            { apvts, { pad.wavePadType             + "DeviationGate" },         knobs[1] },
-            { apvts, { pad.wavePadType             + "WaveShaperDrive" },       knobs[2] },
-            { apvts, { pad.wavePadType             + "BitCrusherFloor" },       knobs[3] },
-            { apvts, { pad.wavePadType             + "DeviationDrive" },        knobs[4] },
-            { apvts, { pad.wavePadType             + "DeviationSaturation" },   knobs[5] },
-            { apvts, { "filterBLow" },                              knobs[6] },
-            { apvts, { "filterBHigh" },                             knobs[7] },
-            { apvts, { pad.wavePadType             + "AtanBlend" },             knobs[8] },
-            { apvts, { pad.wavePadType             + "BitCrusherBlend" },       knobs[9] },
-            { apvts, { pad.wavePadType             + "DeviationBlend" },        knobs[10] },
-            { apvts, { "filterBBlend" },                            knobs[11] }
+            { apvts, { pad.wavePadType + "AtanDrive" },            knobs[0] },
+            { apvts, { pad.wavePadType + "DeviationGate" },        knobs[1] },
+            { apvts, { pad.wavePadType + "WaveShaperBlend" },      knobs[2] },
+            { apvts, { pad.wavePadType + "BitCrusherFloor" },      knobs[3] },
+            { apvts, { pad.wavePadType + "DeviationDrive" },       knobs[4] },
+            { apvts, { pad.wavePadType + "DeviationSaturation" },  knobs[5] },
+            { apvts,                   { "filterBLow" },           knobs[6] },
+            { apvts,                   { "filterBHigh" },          knobs[7] },
+            { apvts, { pad.wavePadType + "AtanBlend" },            knobs[8] },
+            { apvts, { pad.wavePadType + "BitCrusherBlend" },      knobs[9] },
+            { apvts, { pad.wavePadType + "DeviationBlend" },       knobs[10] },
+            { apvts,                   { "filterBBlend" },         knobs[11] }
         };
         Panel panel[numPanels] { { 2, &knobs[4], &knobs[10] }, { 2, &knobs[0], &knobs[8] }, { 2, &knobs[6], &knobs[11] }, { 2, &knobs[2], &knobs[9] } };
     };

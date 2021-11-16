@@ -24,7 +24,6 @@ namespace sadistic {
                 for (int i { 0 }; i < buffer.getNumSamples(); ++i)
                     buffer.setSample(j, i, waveTable[buffer.getSample(j, i)]);
         }
-        FloatType gTable[waveLength + 1]{};
         GainTable<FloatType> waveTable{};
         bool newDataHere { true };
         APVTS& apvts;
@@ -32,6 +31,14 @@ namespace sadistic {
 
     template<typename FloatType>
     struct DynamicWaveShaper : DeviantEffect, ValueTree::Listener {
+        
+        using Atan = DynamicAtan<FloatType>;
+        using Crusher = DynamicBitCrusher<FloatType>;
+        using Deviation = DynamicDeviation<FloatType>;
+        using AtanParams = typename Atan::Params;
+        using CrusherParams = typename Crusher::Params;
+        using DeviationParams = typename Deviation::Params;
+        
         static constexpr int bufferLength { BUFFERLENGTH }, maxWaveOrder { 10 }, maxWavelength { 1 << maxWaveOrder }, fifoLength { maxWavelength + bufferLength }, waveLength { WAVELENGTH }, phaseFilterOrder { PhaseTable<FloatType>::phaseFilterOrder }, dOrder { 3 }, dFactor { (1 << dOrder) };
         static constexpr FloatType zero { static_cast<FloatType>(0) }, one { static_cast<FloatType>(1) }, two { static_cast<FloatType>(2) }, half { one / two }, quarter { half / two }, pi { MathConstants<FloatType>::pi }, halfPi { MathConstants<FloatType>::halfPi }, twoPi { MathConstants<FloatType>::twoPi };
         
@@ -60,7 +67,7 @@ namespace sadistic {
         struct WaveShaper {
 
             using Comparator = bool(WaveShaper::*)(const int);
-            using TurnFunction = void(WaveShaper::*)(const int, FloatType, FloatType, FloatType);
+            using TurnFunction = void(WaveShaper::*)(const int, FloatType, const AtanParams&, const CrusherParams&, const DeviationParams&);
 
             WaveShaper(DynamicWaveShaper& wS) : shaper(wS) {
                 compare = &WaveShaper::isTrough;
@@ -80,17 +87,32 @@ namespace sadistic {
                 slope = zero;
                 std::fill(wave, wave + fifoLength, zero); }
 
-            void process (FloatType* buffer, FloatType drive, FloatType crushMax, FloatType crushBlend) {
+            void process (FloatType* buffer, FloatType blend, const AtanParams& atanParams, const CrusherParams& crusherParams, const DeviationParams& deviationParams) {
                 for (int i { 0 }; i < bufferLength; ++i) wave[waveIndex + i] = buffer[i];
                 for(int i { waveIndex }, end { waveIndex + bufferLength }; i < end; ++i) {
                     if((this->*compare)(i)) {
-                        (this->*turn)(((i - 1) + fifoLength) % fifoLength, drive, crushMax, crushBlend);
+                        (this->*turn)(leftOf(i), blend, atanParams, crusherParams, deviationParams);
                         switchDirections();
                     }
                 }
                 waveIndex = (waveIndex + bufferLength) % fifoLength;
                 if (crossing >= waveIndex && crossing < waveIndex + bufferLength) crossing = -1;
                 for (int i { 0 }; i < bufferLength; ++i) buffer[i] = wave[waveIndex + i];
+            }
+            
+            void processHigh (FloatType* buffer, FloatType* hpBuffer, FloatType blend, const AtanParams& atanParams, const CrusherParams& crusherParams, const DeviationParams& deviationParams) {
+                for (int i { 0 }; i < bufferLength; ++i) wave[waveIndex + i] = buffer[i];
+                for (int i { 0 }; i < bufferLength; ++i) data[waveIndex + i] = hpBuffer[i];
+                for(int i { waveIndex }, end { waveIndex + bufferLength }; i < end; ++i) {
+                    if((this->*compare)(i)) {
+                        (this->*turn)(leftOf(i), blend, atanParams, crusherParams, deviationParams);
+                        switchDirections();
+                    }
+                }
+                waveIndex = (waveIndex + bufferLength) % fifoLength;
+                if (crossing >= waveIndex && crossing < waveIndex + bufferLength) crossing = -1;
+                for (int i { 0 }; i < bufferLength; ++i) buffer[i] = wave[waveIndex + i];
+                for (int i { 0 }; i < bufferLength; ++i) hpBuffer[i] = data[waveIndex + i];
             }
 
             int leftOf(int i) { return ((i - 1) + fifoLength) % fifoLength; }
@@ -122,73 +144,61 @@ namespace sadistic {
                 return val < valLeft;
             }
 
-            void turnPeak(const int newPeak, FloatType drive, FloatType crushMax, FloatType crushBlend) {
+            void turnPeak(const int newPeak, FloatType blend, const AtanParams& atanParams, const CrusherParams& crusherParams, const DeviationParams& deviationParams) {
                 int newCrossing { (cross + distance(cross, cross2)/2) %  fifoLength };
-                if (crossing != -1) convolveOriginal(newCrossing, newPeak, drive, crushMax, crushBlend);
+                auto newCrossingSlope { getSlopeAt(newCrossing) };
+                if (crossing != -1) convolveOriginal(newCrossing, newPeak, newCrossingSlope, blend, atanParams, crusherParams, deviationParams);
                 crossing = newCrossing;
+                crossingSlope = newCrossingSlope;
                 peak = newPeak;
                 slope = zero;
             }
 
-            void turnTrough(const int newTrough, FloatType, FloatType, FloatType) {
+            void turnTrough(const int newTrough, FloatType, const AtanParams&, const CrusherParams&, const DeviationParams&) {
                 int newCrossing { (cross + distance(cross, cross2)/2) %  fifoLength };
                 trough = newTrough;
                 secondCrossing = newCrossing;
                 slope = zero;
+            }
+            
+            FloatType getSlopeAt(int x) { return (wave[rightOf(x)] - wave[leftOf(x)])/two; }
+            FloatType getAmpFromSlopeAndLength(FloatType s, int length) {
+                FloatType normalSineAmplitude { Wave<FloatType>::getSineAmplitudeAtIndex(length * 2, 1) };
+                return s / normalSineAmplitude;
             }
 
             FloatType getAmplitudeExiting(int x, int nextCrossing) {
                 int length { distance(x, nextCrossing) };
                 FloatType normalSineAmplitude { Wave<FloatType>::getSineAmplitudeAtIndex(length * 2, 1) };
                 FloatType dcAtAdjacentSample { wave[x] - (wave[x] - wave[nextCrossing])/FloatType(length) };
-                return jmin(one, abs((wave[rightOf(x)] - dcAtAdjacentSample) / normalSineAmplitude));
+//                FloatType dcAtAdjacentSample { getDC(1, length, wave[x], wave[nextCrossing]) };
+//                return jmin(one, abs((wave[rightOf(x)] - dcAtAdjacentSample) / normalSineAmplitude));
+//                return jmin(one, abs((wave[rightOf(x)] - dcAtAdjacentSample / normalSineAmplitude));
+                return jmin(one, (abs(wave[rightOf(x)] - wave[leftOf(x)])/two) / normalSineAmplitude);
             }
 
             FloatType getAmplitudeEntering(int x, int lastCrossing) {
                 int length { distance(lastCrossing, x) };
                 FloatType normalSineAmplitude { Wave<FloatType>::getSineAmplitudeAtIndex(length * 2, 1) };
                 FloatType dcAtAdjacentSample { wave[x] - (wave[x] - wave[lastCrossing])/FloatType(length) };
-                return jmin(one, abs((wave[leftOf(x)] - dcAtAdjacentSample) / normalSineAmplitude));
+//                FloatType dcAtAdjacentSample { getDC(length - 1, length, wave[lastCrossing], wave[x]) };
+//                return jmin(one, abs((wave[leftOf(x)] - dcAtAdjacentSample) / normalSineAmplitude));
+//                return jmin(one, ((abs(wave[leftOf(x)] - wave[x]) + abs(wave[x] - wave[rightOf(x)]))/two) / normalSineAmplitude);
+                return jmin(one, (abs(wave[rightOf(x)] - wave[leftOf(x)])/two) / normalSineAmplitude);
             }
 
-            void convolveOriginal(int newCrossing, int newPeak, FloatType drive, FloatType crushMax, FloatType crushBlend) {
+            void convolveOriginal(int newCrossing, int newPeak, FloatType newCrossingSlope, FloatType blend, const AtanParams& atanParams, const CrusherParams& crusherParams, const DeviationParams& deviationParams) {
                 const int length1 { distance(crossing, secondCrossing) }, length2 { distance(secondCrossing, newCrossing) };
                 if(length1 > 1 && length2 > 1 && distance(peak, trough) > 1 && distance(trough, newPeak) > 1) {
-                    FloatType amp1 { getAmplitudeExiting(crossing, secondCrossing) };
+//                    FloatType amp1 { getAmplitudeExiting(crossing, secondCrossing) };
+                    FloatType amp1 { getAmpFromSlopeAndLength(crossingSlope, length1) };
                     FloatType amp2 { getAmplitudeEntering(secondCrossing, crossing) };
                     FloatType amp3 { getAmplitudeExiting(secondCrossing, newCrossing) };
-                    FloatType amp4 { getAmplitudeEntering(newCrossing, secondCrossing) };
+//                    FloatType amp4 { getAmplitudeEntering(newCrossing, secondCrossing) };
+                    FloatType amp4 { getAmpFromSlopeAndLength(newCrossingSlope, length2) };
                     FloatType diff1 { (amp2 - amp1) / FloatType(length1) }, diff2 { (amp4 - amp3) / FloatType(length2) };
-                    convolve(crossing, secondCrossing, zero, half, amp1 - diff1, amp2 + diff1, drive, crushMax, crushBlend);
-                    convolve(secondCrossing, newCrossing, half, one, amp3 - diff2, amp4 + diff2, drive, crushMax, crushBlend);
-                }
-            }
-
-            void convolve(int newCrossing, int newPeak) {
-                const int length1 { distance(crossing, secondCrossing) }, length2 { distance(secondCrossing, newCrossing) };
-                if(length1 > 1 && length2 > 1 && distance(peak, trough) > 1 && distance(trough, newPeak) > 1) {
-                    FloatType amp1 { getAmplitudeExiting(crossing, secondCrossing) };
-                    FloatType amp2 { getAmplitudeEntering(secondCrossing, crossing) };
-                    FloatType amp3 { getAmplitudeExiting(secondCrossing, newCrossing) };
-                    FloatType amp4 { getAmplitudeEntering(newCrossing, secondCrossing) };
-                    FloatType diff1 { (amp2 - amp1) / FloatType(length1) }, diff2 { (amp4 - amp3) / FloatType(length2) };
-                    amp1 -= diff1, amp2 += diff1, amp3 -=diff2, amp4 += diff2;
-                    FloatType ampStep { (amp2 - amp1) / FloatType(length1) };
-                    FloatType phaseStep { half / FloatType(length1) };
-                    FloatType dcStep { (wave[secondCrossing] - wave[crossing]) / FloatType(length1) };
-                    int length { jmin(distance(crossing, secondCrossing), fifoLength - crossing) };
-                    FloatType ratio { FloatType(length)/FloatType(length1) }, endPhase { half * ratio };
-                    convolve(crossing, length, zero, phaseStep, amp1, ampStep, wave[crossing], dcStep);
-                    if (length != length1)
-                        convolve(0, length1 - length, endPhase, phaseStep, amp1 + (amp2 - amp1) * ratio, ampStep, wave[crossing]  + (wave[secondCrossing] - wave[crossing]) * ratio, dcStep);
-                    ampStep = { (amp4 - amp3) / FloatType(length2) };
-                    phaseStep = { half / FloatType(length2) };
-                    dcStep = { (wave[newCrossing] - wave[secondCrossing]) / FloatType(length2) };
-                    length = { jmin(distance(secondCrossing, newCrossing), fifoLength - secondCrossing) };
-                    ratio = { FloatType(length)/FloatType(length2) }, endPhase = { half + half * ratio };
-                    convolve(secondCrossing, length, half, phaseStep, amp3, ampStep, wave[secondCrossing], dcStep);
-                    if (length != length2)
-                        convolve(0, length2 - length, endPhase, phaseStep, amp3 + (amp4 - amp3) * ratio, ampStep, wave[secondCrossing] + (wave[newCrossing] - wave[secondCrossing]) * ratio, dcStep);
+                    convolve(crossing, secondCrossing, zero, half, amp1, amp2, blend, atanParams, crusherParams, deviationParams);
+                    convolve(secondCrossing, newCrossing, half, one, amp3, amp4, blend, atanParams, crusherParams, deviationParams);
                 }
             }
 
@@ -206,7 +216,7 @@ namespace sadistic {
                 return startDC + (endDC - startDC) * (half - std::cos((FloatType(i) * pi)/FloatType(length))/two);
             }
 
-            void convolve (int start, int end, FloatType startPhase, FloatType endPhase, FloatType startAmp, FloatType endAmp, FloatType drive, FloatType crushMax, FloatType crushBlend) {
+            void convolve (int start, int end, FloatType startPhase, FloatType endPhase, FloatType startAmp, FloatType endAmp, FloatType blend, const AtanParams& atanParams, const CrusherParams& crusherParams, const DeviationParams& deviationParams) {
                 auto length { distance(start, end) };
                 FloatType phaseStep { (endPhase - startPhase) / FloatType(length) };
                 FloatType dcStep { (wave[end] - wave[start]) / FloatType(length) };
@@ -217,27 +227,30 @@ namespace sadistic {
 
                 for (int i { start }, j { 0 }; i != end; ++i%=fifoLength, ++j, phase += phaseStep, amp += ampStep, dc += dcStep) {
                     FloatType phaseAmplitude { shaper.phaseTable[phase] };
-                    FloatType crushedAmplitude { DynamicBitCrusher<FloatType>::processSample(phaseAmplitude, crushMax, crushBlend) };
-                    FloatType multipliedWithGain { shaper.gainTable[amp * crushedAmplitude] };
-                    wave[i] = drive * (getDC(j, length, wave[start], wave[end]) + multipliedWithGain) + (one - drive) * wave[i];
+                    FloatType atanAmplitude { shaper.atan.processSample(phaseAmplitude, atanParams) };
+                    FloatType crushedAmplitude { shaper.crusher.processSample(atanAmplitude, crusherParams) };
+                    FloatType deviationAmplitude { shaper.deviation.processSample(crushedAmplitude, deviationParams) };
+                    FloatType multipliedWithGain { amp * shaper.gainTable[phaseAmplitude] };//deviationAmplitude };
+                    wave[i] = blend * (getDC(j, length, wave[start], wave[end]) + multipliedWithGain) + (one - blend) * wave[i];
                 }
             }
 
             void switchDirections() { std::swap(compare, compareOther); std::swap(turn, turnOther); }
 
-            FloatType wave[fifoLength]{};
+            FloatType wave[fifoLength]{}, data[fifoLength]{};
             Comparator compare { &WaveShaper::isTrough }, compareOther { &WaveShaper::isPeak };
             TurnFunction turn { &WaveShaper::turnTrough }, turnOther { &WaveShaper::turnPeak };
             int waveIndex { 0 }, peak { -1 }, trough { -1 }, crossing { -1 }, secondCrossing { -1 }, cross { 0 }, cross2 { 0 };
-            FloatType slope { zero }, slopeTolerance { static_cast<FloatType>(0.0001) };
+            FloatType slope { zero }, slopeTolerance { static_cast<FloatType>(0.0001) }, crossingSlope { zero };
             DynamicWaveShaper& shaper;
         };
+
+        void loadHighPassBuffer(AudioBuffer<FloatType>& hpBuffer) {  }
         
         void processSamples(AudioBuffer<FloatType>& buffer) override {
-            enum { driveIndex };
             if (isEnabled()) {
-                const auto drive { static_cast<FloatType>(params[driveIndex].get().get()) };
-                const FloatType crushMax { crusher.getMax() }, crushBlend { crusher.getBlend() };
+                const auto blend { getBlend() };
+//                const FloatType crushMax { crusher.getMax() }, crushBlend { crusher.getBlend() };
                 int bufferIndex { 0 }, numSamples { buffer.getNumSamples() };
 
                 while (bufferIndex < numSamples) {
@@ -265,8 +278,12 @@ namespace sadistic {
 //                        }
 //                        auto upBlock { oversampler.processSamplesUp(block) };
                         
+                        const auto atanParams { atan.returnParams() };
+                        const auto crusherParams { crusher.returnParams() };
+                        const auto deviationParams { deviation.returnParams() };
+                        
                         for (int j { 0 }; j < buffer.getNumChannels(); ++j)
-                            waveShaper[j].process(writeFifo[j], /* upBlock.getChannelPointer(j), */ FloatType(drive), crushMax, crushBlend);
+                            waveShaper[j].process(writeFifo[j], /* upBlock.getChannelPointer(j), */ blend, atanParams, crusherParams, deviationParams);
 
 //                        oversampler.processSamplesDown(upBlock);
 //
@@ -274,7 +291,64 @@ namespace sadistic {
 //                            interpolator[j].process(one / FloatType(dFactor), temp[j], writeFifo[j], bufferLength);
 
 //                        for (int i { 0 }; i < buffer.getNumChannels(); ++i)
-//                            waveShaper[i].process(writeFifo[i], drive, crushMax, crushBlend);
+//                            waveShaper[i].process(writeFifo[i], blend, crushMax, crushBlend);
+                        
+                        fifoIndex = 0;
+                        std::swap(writeFifo, readFifo);
+                    }
+                }
+            }
+        }
+        
+        void processHigh(AudioBuffer<FloatType>& buffer, AudioBuffer<FloatType>& hpBuffer) {
+            if (isEnabled()) {
+                const auto blend { getBlend() };
+                //                const FloatType crushMax { crusher.getMax() }, crushBlend { crusher.getBlend() };
+                int bufferIndex { 0 }, numSamples { buffer.getNumSamples() };
+                
+                while (bufferIndex < numSamples) {
+                    int samples { jmin(bufferLength - fifoIndex, numSamples - bufferIndex) };
+                    
+                    for (int j { 0 }; j < buffer.getNumChannels(); ++j) {
+                        for (int i { bufferIndex }, write { fifoIndex }; i < bufferIndex + samples; ++i, ++write)
+                            writeData[j][write] = static_cast<FloatType>(hpBuffer.getSample(j,i));
+                        for (int i { bufferIndex }, write { fifoIndex }; i < bufferIndex + samples; ++i, ++write)
+                            writeFifo[j][write] = static_cast<FloatType>(buffer.getSample(j,i));
+                        for (int i { bufferIndex }, read { fifoIndex }; i < bufferIndex + samples; ++i, ++read)
+                            hpBuffer.setSample(j, i, static_cast<FloatType>(readData[j][read]));
+                        for (int i { bufferIndex }, read { fifoIndex }; i < bufferIndex + samples; ++i, ++read)
+                            buffer.setSample(j, i, static_cast<FloatType>(readFifo[j][read]));
+                    }
+                    
+                    fifoIndex += samples;
+                    bufferIndex += samples;
+                    
+                    if (fifoIndex == bufferLength) {
+                        
+                        if (newPhaseDataHere) bringInNewPhaseData();
+                        if (newGainDataHere) bringInNewGainData();
+                        
+                        //                        AudioBlock<FloatType> block { temp, static_cast<size_t>(buffer.getNumChannels()), static_cast<size_t>(bufferLength/dFactor) };
+                        //                        for (int j { 0 }; j < buffer.getNumChannels(); ++j) {
+                        //                            for (int i { 0 }; i < bufferLength / dFactor; ++i)
+                        //                                temp[j][i] = writeFifo[j][i * dFactor];
+                        //                        }
+                        //                        auto upBlock { oversampler.processSamplesUp(block) };
+                        
+                        const auto atanParams { atan.returnParams() };
+                        const auto crusherParams { crusher.returnParams() };
+                        const auto deviationParams { deviation.returnParams() };
+                        
+                        for (int j { 0 }; j < buffer.getNumChannels(); ++j)
+                            waveShaper[j].process(writeFifo[j], /* upBlock.getChannelPointer(j), */ blend, atanParams, crusherParams, deviationParams);
+                        
+                        //                        oversampler.processSamplesDown(upBlock);
+                        //
+                        //                        for (int j { 0 }; j < buffer.getNumChannels(); ++j)
+                        //                            interpolator[j].process(one / FloatType(dFactor), temp[j], writeFifo[j], bufferLength);
+                        
+                        //                        for (int i { 0 }; i < buffer.getNumChannels(); ++i)
+                        //                            waveShaper[i].process(writeFifo[i], blend, crushMax, crushBlend);
                         
                         fifoIndex = 0;
                         std::swap(writeFifo, readFifo);
@@ -307,13 +381,12 @@ namespace sadistic {
             newGainDataHere = false;
         }
         
-        FloatType fifo1L[bufferLength]{}, fifo1R[bufferLength]{}, fifo2L[bufferLength]{}, fifo2R[bufferLength]{}, tempL[bufferLength/dFactor]{}, tempR[bufferLength/dFactor]{};
-        //        FloatType gTable[waveLength + 1]{}, pTable[waveLength + phaseFilterOrder + 1]{};
+        FloatType fifo1L[bufferLength]{}, fifo1R[bufferLength]{}, fifo2L[bufferLength]{}, fifo2R[bufferLength]{}, fifo3L[bufferLength]{}, fifo3R[bufferLength]{}, fifo4L[bufferLength]{}, fifo4R[bufferLength]{};
         GainTable<FloatType> gainTable{};
         PhaseTable<FloatType> phaseTable{};
-        FloatType*     fifo1[2] { fifo1L, fifo1R },     *  fifo2[2] { fifo2L, fifo2R },    *  tempA[2]{ tempL, tempR };
-        FloatType**    writeFifo{ fifo1 },              ** readFifo { fifo2 }, ** temp { tempA };
-        FloatType wave[fifoLength]{};
+        FloatType* fifo1[2]{ fifo1L, fifo1R }, * fifo2[2]{ fifo2L, fifo2R }, * fifo3[2]{ fifo3L, fifo3R }, * fifo4[2]{ fifo4L, fifo4R };
+        FloatType** writeFifo{ fifo1 }, ** readFifo { fifo2 }, ** writeData{ fifo3 }, ** readData { fifo4 };
+        FloatType wave[fifoLength]{}, data[fifoLength]{};
         int waveIndex { 0 }, peak { -1 }, trough { -1 }, crossing { -1 }, secondCrossing { -1 }, cross { 0 }, cross2 { 0 };
         FloatType slope { zero }, delta { zero }, lastSlope { zero }, crossingSlope { zero }, slopeTolerance { static_cast<FloatType>(0.00001) };
         std::atomic<bool> newPhaseDataHere { true }, newGainDataHere { true };

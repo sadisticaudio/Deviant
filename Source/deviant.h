@@ -242,7 +242,7 @@ namespace sadistic {
 //        }
         FloatType operator[](FloatType phase) const {
             jassert(isPositiveAndNotGreaterThan(phase, one));
-            FloatType floatIndex { jlimit(zero, one, phase) * FloatType(waveLength-1) };
+            FloatType floatIndex { jlimit(zero, one, phase) * FloatType(waveLength) };
             auto i { truncatePositiveToUnsignedInt (floatIndex) };
             auto f { floatIndex - FloatType (i) };
             jassert (isPositiveAndBelow (f, one));

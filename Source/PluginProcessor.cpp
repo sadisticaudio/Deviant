@@ -34,8 +34,10 @@ sadistic::Deviant::Deviant(AudioProcessorValueTreeState::ParameterLayout layout)
     setGainTable(); setWaveTable();
 }
 void sadistic::Deviant::prepareToPlay (double sR, int sPB) { if (getProcessingPrecision() == doublePrecision) prepare(sR, sPB, membersD); else prepare(sR, sPB, membersF); };
-void sadistic::Deviant::processBlock (AudioBuffer<double>& buffer, MidiBuffer&) { processBuffered(buffer, membersD); }
-void sadistic::Deviant::processBlock (AudioBuffer<float>& buffer, MidiBuffer&) { processBuffered(buffer, membersF); }
+//void sadistic::Deviant::processBlock (AudioBuffer<double>& buffer, MidiBuffer&) { membersD.process(buffer, [&, this](AudioBuffer<double>& buf) { processTheDamnBlock(buf, membersD); }); }
+//void sadistic::Deviant::processBlock (AudioBuffer<float>& buffer, MidiBuffer&) { membersF.process(buffer, [&, this](AudioBuffer<float>& buf) { processTheDamnBlock(buf, membersF); }); }
+void sadistic::Deviant::processBlock (AudioBuffer<float>& buffer, MidiBuffer&) { processTheDamnBlock(buffer, membersF); }
+void sadistic::Deviant::processBlock (AudioBuffer<double>& buffer, MidiBuffer&) { processTheDamnBlock(buffer, membersD); }
 AudioProcessorEditor* sadistic::Deviant::createEditor() { return new sadistic::DeviantEditor (*this); }
 bool sadistic::Deviant::canApplyBusCountChange (bool, bool, BusProperties&){ return true; }
 

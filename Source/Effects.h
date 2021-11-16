@@ -36,19 +36,33 @@ namespace sadistic {
         DeviantEffect(eID, refs, floatRefs, eIDX) {}
         template<typename F> DynamicAtan(DynamicAtan<F>& other) : DeviantEffect(other) {}
         
-        void processSamples(AudioBuffer<FloatType>& buffer) override {
+        struct Params { FloatType drive, attenuationFactor, blend; };
+        Params returnParams() {
             const auto drive { static_cast<FloatType>(params[driveIndex].get().get()) };
             NormalisableRange<FloatType> range { 0.1, 6.0, 0.0, 0.2 }, range2 { 0.7f, 2.0, 0., 1.4 };
             const auto attenuationFactor { range2.convertFrom0to1(drive) };
             const auto blend { static_cast<FloatType>(getBlend()) };
+            return { drive, attenuationFactor, blend };
+        }
+        static inline FloatType fastatan( FloatType x ) { return (two/pi) * atan(x * pi/two); }
+        static inline FloatType processSample(FloatType sample, const Params& p) {
+            return (fastatan(sample * (one + p.drive * FloatType(14))) / p.attenuationFactor) * p.blend + sample * (one - p.blend);
+        }
+        
+        void processSamples(AudioBuffer<FloatType>& buffer) override {
+            const auto drive { static_cast<FloatType>(params[driveIndex].get().get()) };
+            NormalisableRange<FloatType> range { 0.1, 6.0, 0.0, 0.2 }, range2 { 0.7, 2.0, 0., 1.4 };
+            const auto attenuationFactor { range2.convertFrom0to1(drive) };
+            const auto blend { static_cast<FloatType>(getBlend()) };
+            
+            const auto p { returnParams() };
             
             for (int channel { 0 }; channel < buffer.getNumChannels(); ++channel) {
                 FloatType* channelData { buffer.getWritePointer (channel) };
                 for (int sample { 0 }; sample < buffer.getNumSamples(); sample++, channelData++)
-                    *channelData = (fastatan(*channelData * (one + drive * FloatType(14))) / attenuationFactor) * blend + *channelData * (one - blend);
+                    *channelData = processSample(*channelData, p);
             }
         }
-        inline FloatType fastatan( FloatType x ) { return (two/pi) * atan(x * pi/two); }
     };
     
     template<typename FloatType>
@@ -100,50 +114,10 @@ namespace sadistic {
         DeviantEffect(eID, refs, floatRefs, eIDX) {}
         template<typename F> DynamicBitCrusher(DynamicBitCrusher<F>& other) : DeviantEffect(other) {}
         
-        static FloatType rround(FloatType f) { return f > zero ? floor(f + half) : ceil(f - half); }
-        
-        void processSamples(AudioBuffer<FloatType>& buffer) { processWithAmp(buffer, one, zero); }
-        
-        void processWithAmp(AudioBuffer<FloatType>& buffer, FloatType startAmp, FloatType ampStep) {
-            const int channels { buffer.getNumChannels() }, samples { buffer.getNumSamples() };
-            for (int j { 0 }; j < channels; ++j) processChannel(buffer.getWritePointer(j), samples, startAmp, ampStep);
-        }
-        
-        void processChannel(FloatType* channelData, int samples, FloatType startAmp, FloatType ampStep) {
-            
+        struct Params { FloatType max, attenuationFactor, blend; };
+        Params returnParams() {
             auto drive { params[driveIndex].get().get() };
-            auto floor { params[floorIndex].get().get() };
-            
-//            const FloatType mapped_crush_floor { floor * FloatType(31) + one };
-//            const FloatType crush_floor { FloatType(32) - static_cast<int>(mapped_crush_floor) + one };
-//
-//            const FloatType mapped_input { drive * (crush_floor - one) + one };
-//            const int bitDepth { static_cast<int>(crush_floor - mapped_input) + 1 };
-//            int i { 4 };
-//            for (; i <= bitDepth; i *= 2) ;
-            const auto max { getMax(drive, floor) };
-//            auto mag { buffer.getMagnitude(0, buffer.getNumSamples()) };
-//            if (mag == zero) mag = one;
-            const auto blend { getBlend() };
-            
-            FloatType step, amp;
-            
-//            for (int channel { 0 }; channel < channels; ++channel) {
-                step = ampStep;
-                amp = startAmp;
-//                FloatType* channelData { buffer.getWritePointer (channel) };
-                for (int sample { 0 }; sample < samples; sample++, channelData++, amp += ampStep) {
-                    jassert(!isnan(*channelData));
-                    *channelData = processSample(*channelData, max, amp, blend);
-                }
-//            }
-        }
-        FloatType getMax() {
-            auto drive { params[driveIndex].get().get() };
-            auto floor { params[floorIndex].get().get() };
-            return getMax(drive, floor);
-        }
-        static inline FloatType getMax(FloatType drive, FloatType floor) {
+            auto floor { static_cast<FloatType>(params[floorIndex].get().get()) };
             const FloatType mapped_crush_floor { floor * FloatType(31) + one };
             const FloatType crush_floor { FloatType(32) - static_cast<int>(mapped_crush_floor) + one };
             
@@ -151,13 +125,24 @@ namespace sadistic {
             const int bitDepth { static_cast<int>(crush_floor - mapped_input) + 1 };
             int i { 4 };
             for (; i <= bitDepth; i *= 2) ;
-            return static_cast<FloatType>(i - 1);
+//            const auto max { static_cast<FloatType>(i - 1) };
+            const auto max { static_cast<FloatType>(powf(floor - one, 4.f)) * 1024 + 1 };
+            const auto attenuationFactor { one };
+            const auto blend { getBlend() };
+            return { max, attenuationFactor, blend };
         }
-        static inline FloatType processSample(FloatType sample, FloatType max, FloatType amp, FloatType blend) {
-            return blend * (rround((sample / amp + one) * max) / max - one) * amp + (one - blend) * sample;
-        }
-        static inline FloatType processSample(FloatType sample, FloatType max, FloatType blend) {
-            return blend * (rround((sample + one) * max) / max - one) + (one - blend) * sample;
+        static inline FloatType rround(FloatType f) { return f > zero ? floor(f + half) : ceil(f - half); }
+        static inline FloatType processSample(FloatType sample, const Params& p) {
+            return p.blend * (rround((sample + one) * p.max) / p.max - one) + (one - p.blend) * sample; }
+
+        void processSamples(AudioBuffer<FloatType>& buffer) {
+            const auto p { returnParams() };
+            const int channels { buffer.getNumChannels() }, samples { buffer.getNumSamples() };
+            for (int j { 0 }; j < channels; ++j) {
+                auto* channelData { buffer.getWritePointer(j) };
+                for (int i { 0 }; i < samples; ++i, ++channelData)
+                    *channelData = processSample(*channelData, p);
+            }
         }
     };
     
@@ -204,13 +189,15 @@ namespace sadistic {
         enum { driveIndex, gateIndex, saturationIndex };
         static constexpr int waveLength { WAVELENGTH };
         static constexpr FloatType zero { static_cast<FloatType>(0) }, one { static_cast<FloatType>(1) }, two { static_cast<FloatType>(2) }, half { one / two }, quarter { half / two }, pi { MathConstants<FloatType>::pi }, halfPi { MathConstants<FloatType>::halfPi }, twoPi { MathConstants<FloatType>::twoPi };
+        
         DynamicDeviation(String eID, ParamList refs, FloatParamList floatRefs, int eIDX, APVTS&) :
         DeviantEffect(eID, refs, floatRefs, eIDX) {}
         template<typename F> DynamicDeviation(DynamicDeviation<F>& other) : DeviantEffect(other) {}
         
         void reset() override {}
         void prepare(const ProcessSpec&) override {}
-        void processSamples(AudioBuffer<FloatType>& buffer) override {
+        struct Params { FloatType gateOffset, gate, saturation, drive, attenuationFactor, blend; };
+        Params returnParams() {
             auto driveRange { params[driveIndex].get().getNormalisableRange() };
             auto saturationRange { params[saturationIndex].get().getNormalisableRange() };
             
@@ -226,11 +213,18 @@ namespace sadistic {
             const auto blend { static_cast<FloatType>(getBlend()) };
             
             const auto gateOffset { (((gate + one) / two) - one) / ((gate + one) / two) };
+            return { gateOffset, gate, saturation, drive, attenuationFactor, blend };
+        }
+        static inline FloatType processSample(FloatType sample, const Params& p) {
+            return (-one - p.gateOffset + (two/(one + (one / p.gate) * pow(exp(-p.saturation * sample),(p.drive))))) * p.attenuationFactor * p.blend + sample * (one - p.blend);
+        }
+        void processSamples(AudioBuffer<FloatType>& buffer) override {
+            const auto p { returnParams() };
             
             for (int channel { 0 }; channel < buffer.getNumChannels(); ++channel) {
                 FloatType* channelData { buffer.getWritePointer (channel) };
                 for (int sample { 0 }; sample < buffer.getNumSamples(); sample++, channelData++) {
-                    *channelData = static_cast<FloatType>((-one - gateOffset + (two/(one + (one / gate) * pow(exp(-saturation * *channelData),(drive))))) * attenuationFactor) * blend + *channelData * (one - blend);
+                    processSample(*channelData, p);// = static_cast<FloatType>((-one - gateOffset + (two/(one + (one / gate) * pow(exp(-saturation * *channelData),(drive))))) * attenuationFactor) * blend + *channelData * (one - blend);
                     jassert(!isnan(*channelData));
                 }
             }

@@ -69,8 +69,8 @@ namespace sadistic {
         void prepare(const ProcessSpec& spec) {
             spectralInversionBuffer.setSize((int)spec.numChannels, (int) spec.maximumBlockSize);
             blendBuffer.setSize((int)spec.numChannels, (int) spec.maximumBlockSize);
-            *lpf.state = *makeBandpass<FloatType>(30, 400, 44100.0, 64, WindowingFunction<FloatType>::hann);
-            *lpf2.state = *makeBandpass<FloatType>(30, 2000, 44100.0, 4, WindowingFunction<FloatType>::kaiser);
+            *lpf.state = *makeBandpass<FloatType>(40, 800, 44100.0, 64, WindowingFunction<FloatType>::kaiser);
+            *lpf2.state = *makeBandpass<FloatType>(30, 15000, 44100.0, 24, WindowingFunction<FloatType>::kaiser);
             prepareAll(spec, filterA, filterB, dynamicWaveShaper, staticWaveShaper, dynamicDeviation, staticDeviation, dynamicBitCrusher, staticBitCrusher, dynamicAtan, staticAtan, lpf, lpf2, spectralInversionDelay1, spectralInversionDelay2, blendDelay1, blendDelay2); reset(); }
         
         void sort () { std::sort(std::begin(effects), std::end(effects), [](DeviantEffect* a, DeviantEffect* b) { return *a < *b; }); }

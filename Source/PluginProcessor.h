@@ -15,7 +15,7 @@ namespace sadistic {
         void processBlock (AudioBuffer<float>&, MidiBuffer&) override;
         void processBlock (AudioBuffer<double>&, MidiBuffer&) override;
         bool supportsDoublePrecisionProcessing() const override { return true; }
-        const String getName() const override { return JucePlugin_Name; }
+        const String getName() const override { return "ddd"; }//JucePlugin_Name; }
         bool acceptsMidi() const override { return false; }
         bool producesMidi() const override { return false; }
         bool isMidiEffect() const override { return false; }
@@ -31,22 +31,19 @@ namespace sadistic {
 
         void getStateInformation (MemoryBlock& destinationBlockForAPVTS) override {
             MemoryOutputStream stream(destinationBlockForAPVTS, false);
-            apvts.state.writeToStream (stream);
-        }
-        
+            apvts.state.writeToStream (stream); }
         void setStateInformation (const void* dataFromHost, int size) override {
             auto treeCreatedFromData { ValueTree::readFromData (dataFromHost, static_cast<size_t>(size)) };
-            if (treeCreatedFromData.isValid()) apvts.state = treeCreatedFromData;
-        }
+            if (treeCreatedFromData.isValid()) apvts.state = treeCreatedFromData; }
         
         template<typename FloatType> void setGainTable(DeviantMembers<FloatType>& m) {
             FloatType arr[WAVELENGTH + 1];
             for (int i { 0 }; i < WAVELENGTH + 1; ++i) arr[i] = FloatType(-1) + FloatType(2 * i) / FloatType(WAVELENGTH);
             FloatType* mockChannel[1] = { arr };
             AudioBuffer<FloatType> buf { mockChannel, 1, WAVELENGTH + 1 };
-//            m.dynamicBitCrusher.processSamples(buf);
             m.dynamicAtan.processSamples(buf);
             m.dynamicDeviation.processSamples(buf);
+            m.dynamicBitCrusher.processSamples(buf);
             DeviantTree::setGainTable(apvts, &undoManager, arr);
         }
         
@@ -60,6 +57,7 @@ namespace sadistic {
             m.staticDeviation.processSamples(buf);
             DeviantTree::setWaveTable(apvts, &undoManager, arr);
         }
+        
         void setGainTable() { if(getProcessingPrecision() == doublePrecision) setGainTable(membersD); else setGainTable(membersF); }
         void setWaveTable() { if(getProcessingPrecision() == doublePrecision) setWaveTable(membersD); else setWaveTable(membersF); }
         
@@ -74,19 +72,18 @@ namespace sadistic {
             auto channels { jmin((uint32) getMainBusNumInputChannels(), (uint32) 2, (uint32) getMainBusNumOutputChannels()) };
             dsp::ProcessSpec spec { sampleRate, (uint32) samplesPerBlock, channels };
             m.prepare(spec);
-            const auto latency { static_cast<int>(m.lpf.state->getFilterOrder()/2 + m.lpf2.state->getFilterOrder()/2) +
-                m.filterA.getLatency() + m.filterB.getLatency() +
-                m.dynamicWaveShaper.getLatency() };
+            const auto latency { static_cast<int>(m.lpf.state->getFilterOrder()/2) + /* m.lpf2.state->getFilterOrder()/2) + */
+                m.filterA.getLatency() + m.filterB.getLatency() + m.dynamicWaveShaper.getLatency() };
             setLatencySamples(latency);
             m.blendDelay1.setDelay(latency);
             m.spectralInversionDelay1.setDelay(static_cast<int>(m.lpf.state->getFilterOrder()/2));
-            m.spectralInversionDelay2.setDelay(m.dynamicWaveShaper.getLatency() + m.filterA.getLatency() + m.filterB.getLatency() + static_cast<int>(m.lpf2.state->getFilterOrder()/2));
+            m.spectralInversionDelay2.setDelay(m.dynamicWaveShaper.getLatency() + m.filterA.getLatency() + m.filterB.getLatency() /* + static_cast<int>(m.lpf2.state->getFilterOrder()/2) */);
             m.oversampler.initProcessing(size_t(samplesPerBlock));
         }
         
-        template<typename FloatType> void processBuffered(AudioBuffer<FloatType>& buffer, DeviantMembers<FloatType>& m) {
-            m.process(buffer, [&, this](AudioBuffer<FloatType>& buf) { processTheDamnBlock(buf, m); });
-        }
+//        template<typename FloatType> void processBuffered(AudioBuffer<FloatType>& buffer, DeviantMembers<FloatType>& m) {
+//            m.process(buffer, [&, this](AudioBuffer<FloatType>& buf) { processTheDamnBlock(buf, m); });
+//        }
 
         template<typename FloatType> void processTheDamnBlock(AudioBuffer<FloatType>& buffer, DeviantMembers<FloatType>& m) {
             const int numIns { getMainBusNumInputChannels() }, numOuts { getMainBusNumOutputChannels() }, channels { jmin(numIns, numOuts, 2) }, samples { buffer.getNumSamples() };
@@ -97,12 +94,11 @@ namespace sadistic {
             //create references to our member buffers
             auto& blendBuffer { m.blendBuffer }, & spectralInversionBuffer { m.spectralInversionBuffer };
             
-            //copy what's in our buffer to our blend buffer, delaying it by the total latency
-            //this delay will resize our buffer to the current buffer length
+            //copy what's in our buffer to our blend buffer, delaying the blendBuffer by the total latency
+            //and the spectralInversionBuffer by the latency of the pre-filtering
+            //the delays will resize our buffers to the current buffer length
             //and retain samples needed in subsequent processBlock calls
             m.blendDelay1.process(mainBuffer, blendBuffer);
-
-            //copy what's in our buffer to our spectral inversion buffer, delaying it by the latency of the pre-filtering
             m.spectralInversionDelay1.process(mainBuffer, spectralInversionBuffer);
 
             AudioBlock<FloatType> block { mainBuffer }, spectralInversionBlock { spectralInversionBuffer }, blendBlock { blendBuffer };
@@ -114,9 +110,6 @@ namespace sadistic {
             //shape the wave
 //            auto upBlock { m.oversampler.processSamplesUp(block) };
             
-//            for (int j { 0 }; j < buffer.getNumChannels(); ++j)
-//                waveShaper[j].process(writeFifo[j], /* upBlock.getChannelPointer(j), */ FloatType(drive), crushMax, crushBlend);
-            
 //            AudioBuffer<FloatType> upBuffer { upBlock.channels, buffer.getNumChannels(), buffer.getNumSamples() };
             
             m.dynamicWaveShaper.processSamples(mainBuffer);
@@ -127,20 +120,12 @@ namespace sadistic {
 //                m.interpolator[j].process(FloatType(1) / FloatType(m.dFactor), upBlock.getChannelPointer(j), block.getChannelPointer(j), m.bufferLength);
             
             m.filterA.process(mainBuffer);
-            m.staticWaveShaper.process(mainBuffer);
+//            m.staticWaveShaper.process(spectralInversionBuffer);
             m.filterB.process(mainBuffer);
-//            m.staticAtan.process(mainBuffer);
-//            m.staticDeviation.process(mainBuffer);
-//            m.staticBitCrusher.process(mainBuffer);
-            
-            m.lpf2.process(ProcessContextReplacing<FloatType>(block));
-            
-            //push the dry and wet signals seperately to the oscilloscope
-            oscilloscopeFifo[drySignal].pushChannel(blendBlock);
-            oscilloscopeFifo[wetSignal].pushChannel(block);
-            
-            
-            
+            m.staticAtan.process(spectralInversionBuffer);
+            m.staticDeviation.process(spectralInversionBuffer);
+            m.staticBitCrusher.process(spectralInversionBuffer);
+
             //delay the spectralInversionBuffer the rest of the way
             m.spectralInversionDelay2.process(spectralInversionBuffer);
 //
@@ -153,11 +138,15 @@ namespace sadistic {
 //            for (int i { m.getFilterAIndex() + 1 }; i < numFX; ++i) m.effects[i]->process(mainBuffer);
             
             //add back in the spectral inverse of the first filter(s), this part of the signal was not meant to be distorted
-//            block += spectralInversionBlock;
+            block += spectralInversionBlock;
 
             //attenuate the signals according to the blend parameter
             block *= blend;
             blendBlock *= (FloatType(1) - blend);
+            
+            //push the dry and wet signals seperately to the oscilloscope
+            oscilloscopeFifo[drySignal].pushChannel(blendBlock);
+            oscilloscopeFifo[wetSignal].pushChannel(block);
             
             //output the sum of both signals
             block += blendBlock;
