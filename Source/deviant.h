@@ -196,8 +196,6 @@ namespace sadistic {
     template<typename FloatType> struct GainTable {
         static constexpr int waveLength { WAVELENGTH };
         static constexpr FloatType zero { static_cast<FloatType>(0) }, one { static_cast<FloatType>(1) }, two { static_cast<FloatType>(2) }, half { one / two }, quarter { half / two }, pi { MathConstants<FloatType>::pi }, halfPi { MathConstants<FloatType>::halfPi }, twoPi { MathConstants<FloatType>::twoPi };
-//        GainTable(FloatType* t) : table(t) {}
-        GainTable() = default;
         FloatType operator[](int idx) const {
             jassert (isPositiveAndBelow (idx, waveLength + 1));
             return table[idx % waveLength]; }
@@ -216,23 +214,9 @@ namespace sadistic {
     template<typename FloatType> struct PhaseTable {
         static constexpr int waveLength { WAVELENGTH }, phaseFilterOrder { 8 };
         static constexpr FloatType zero { static_cast<FloatType>(0) }, one { static_cast<FloatType>(1) }, two { static_cast<FloatType>(2) }, half { one / two }, quarter { half / two }, pi { MathConstants<FloatType>::pi }, halfPi { MathConstants<FloatType>::halfPi }, twoPi { MathConstants<FloatType>::twoPi };
-        PhaseTable() {
-//            table = &t[0];
-            filter.coefficients = *makeBandpass<FloatType>(one, 5000, 44100.0, phaseFilterOrder, WindowingFunction<FloatType>::hann);
-        }
         FloatType operator[](int idx) const {
             jassert (isPositiveAndBelow (idx, waveLength + 1));
             return table[idx % waveLength]; }
-//        FloatType operator[](FloatType phase) const {
-//            jassert(isPositiveAndNotGreaterThan(phase, one));
-//            FloatType floatIndex { jlimit(zero, one, phase) * FloatType(waveLength-1) };
-//            auto i { static_cast<int>(truncatePositiveToUnsignedInt (floatIndex)) };
-//            auto f { floatIndex - FloatType (i) };
-//            jassert (isPositiveAndBelow (f, one));
-//            auto x0 { table[i] };
-//            auto x1 { table[i + 1] };
-//            return jmap (f, x0, x1);
-//        }
         FloatType operator[](FloatType phase) const {
             jassert(isPositiveAndNotGreaterThan(phase, one));
             FloatType floatIndex { jlimit(zero, one, phase) * FloatType(waveLength) };
@@ -241,139 +225,15 @@ namespace sadistic {
             jassert (isPositiveAndBelow (f, one));
             auto x0 { table[i] };
             auto x1 { table[i + 1] };
-            
             return jmap (f, x0, x1);
         }
-        FIR::Filter<FloatType> filter;
         FloatType table[waveLength + 1]{};
     };
     
-    template<typename FloatType> struct PadGainTable {
-        static constexpr int waveLength { WAVELENGTH };
-        static constexpr FloatType zero { static_cast<FloatType>(0) }, one { static_cast<FloatType>(1) }, two { static_cast<FloatType>(2) }, half { one / two }, quarter { half / two }, pi { MathConstants<FloatType>::pi }, halfPi { MathConstants<FloatType>::halfPi }, twoPi { MathConstants<FloatType>::twoPi };
-        PadGainTable(FloatType* t) : table(t) {}
-        FloatType operator[](int idx) const {
-            jassert (isPositiveAndBelow (idx, waveLength + 1));
-            return table[idx % waveLength]; }
-        FloatType operator[](FloatType sample) const {
-            FloatType floatIndex { jlimit(-one, one, sample) * FloatType(waveLength)/two + FloatType(waveLength)/two };
-            auto i { truncatePositiveToUnsignedInt (floatIndex) };
-            auto f { floatIndex - FloatType (i) };
-            jassert (isPositiveAndNotGreaterThan (f, one));
-            auto x0 { table[i] };
-            auto x1 { table[i + 1] };
-            return jmap (f, x0, x1);
-        }
-        FloatType* table;
-    };
-    
-    template<typename FloatType> struct PadPhaseTable {
-        static constexpr int waveLength { WAVELENGTH }, phaseFilterOrder { 8 };
-        static constexpr FloatType zero { static_cast<FloatType>(0) }, one { static_cast<FloatType>(1) }, two { static_cast<FloatType>(2) }, half { one / two }, quarter { half / two }, pi { MathConstants<FloatType>::pi }, halfPi { MathConstants<FloatType>::halfPi }, twoPi { MathConstants<FloatType>::twoPi };
-        PadPhaseTable(FloatType* t) : table(t) {
-            table = &t[0];
-            filter.coefficients = *makeBandpass<FloatType>(one, 5000, 44100.0, phaseFilterOrder, WindowingFunction<FloatType>::hann);
-        }
-        FloatType operator[](int idx) const {
-            jassert (isPositiveAndBelow (idx, waveLength + 1));
-            return table[idx % waveLength]; }
-        FloatType operator[](FloatType phase) const {
-            jassert(isPositiveAndNotGreaterThan(phase, one));
-            FloatType floatIndex { jlimit(zero, one, phase) * FloatType(waveLength) };
-            auto i { truncatePositiveToUnsignedInt (floatIndex) };
-            auto f { floatIndex - FloatType (i) };
-            jassert (isPositiveAndBelow (f, one));
-            auto x0 { table[i] };
-            auto x1 { table[i + 1] };
-            return jmap (f, x0, x1);
-        }
-        FIR::Filter<FloatType> filter;
-        FloatType* table;
-    };
-    
-    struct DeviantTree {
-        static constexpr int waveLength { WAVELENGTH };
-        DeviantTree(APVTS& s, UndoManager* uM) {
-            auto vts = ValueTree("STATE");
-            double def[waveLength + 1];
-            Wave<double>::fillStaticTable(def, waveLength, Wave<double>::atan, true, true);
-            setWaveTable(s, uM, def);
-            Wave<double>::fillStaticTable(def, waveLength, Wave<double>::atan, true, true);
-            setGainTable(s, uM, def);
-            Wave<double>::fillTable(def, waveLength, Wave<double>::sine, true, true);
-            setPhaseTable(s, uM, def);
-            s.state = vts;
-        }
-
-        template<typename FloatType> static void getWaveTable(APVTS& apvts, FloatType* dest, bool = false) {
-            auto state = apvts.state;
-            getWaveTable(state, dest);
-//            auto x { apvts.state.getProperty("waveTable") };
-//            auto array = x.getArray();
-//            auto* b = array->begin();
-//            for(int i { 0 }; i <= waveLength; ++i, ++b) dest[i] = static_cast<FloatType>(double(*b));
-        }
-        template<typename FloatType> static void getWaveTable(ValueTree& vts, FloatType* dest, bool = false) {
-            auto x { vts.getProperty("waveTable") };
-            auto array = x.getArray();
-            auto* b = array->begin();
-            for(int i { 0 }; i <= waveLength; ++i, ++b) dest[i] = static_cast<FloatType>(double(*b));
-        }
-        template<typename FloatType> static void setWaveTable(APVTS& apvts, UndoManager* uM, const FloatType* src) {
-            auto tVar { var(Array<var>()) };
-            auto array = tVar.getArray();
-            for(int i { 0 }; i < waveLength + 1; ++i) array->add(double(src[i]));
-            apvts.state.setProperty("waveTable", tVar, uM);
-        }
-        template<typename FloatType> static void getPhaseTable(APVTS& apvts, FloatType* dest, bool = false) {
-            auto state = apvts.state;
-            getPhaseTable(state, dest);
-//            const auto& x { state.getProperty("phaseTable") };
-//            auto* array = x.getArray();
-//            auto* b = array->begin();
-//            for(int i { 0 }; i <= waveLength; ++i, ++b) dest[i] = static_cast<FloatType>(double(*b));
-        }
-        template<typename FloatType> static void getPhaseTable(ValueTree& vts, FloatType* dest, bool = false) {
-            auto x { vts.getProperty("phaseTable") };
-            auto* array = x.getArray();
-            auto* b = array->begin();
-            for(int i { 0 }; i <= waveLength; ++i, ++b) dest[i] = static_cast<FloatType>(double(*b));
-        }
-        template<typename FloatType> static void setPhaseTable(APVTS& apvts, UndoManager* uM, const FloatType* src) {
-            auto tVar { var(Array<var>()) };
-            auto* array = tVar.getArray();
-            for(int i { 0 }; i < waveLength + 1; ++i) array->add(double(src[i]));
-            apvts.state.setProperty("phaseTable", tVar, uM);
-        }
-        template<typename FloatType> static void getGainTable(APVTS& apvts, FloatType* dest, bool = false) {
-            auto state = apvts.state;
-            getGainTable(state, dest);
-//            auto x { apvts.state.getProperty("gainTable") };
-//            auto array = x.getArray();
-//            auto* b = array->begin();
-//            for(int i { 0 }; i <= waveLength; ++i, ++b) dest[i] = static_cast<FloatType>(double(*b));
-        }
-        template<typename FloatType> static void getGainTable(ValueTree& vts, FloatType* dest, bool = false) {
-            auto x { vts.getProperty("gainTable") };
-            auto* array = x.getArray();
-            auto* b = array->begin();
-            for(int i { 0 }; i <= waveLength; ++i, ++b) dest[i] = static_cast<FloatType>(double(*b));
-        }
-        template<typename FloatType> static void setGainTable(APVTS& apvts, UndoManager* uM, const FloatType* src) {
-            auto tVar { var(Array<var>()) };
-            auto* array = tVar.getArray();
-            for(int i { 0 }; i < waveLength + 1; ++i) array->add(double(src[i]));
-            apvts.state.setProperty("gainTable", tVar, uM);
-        }
-    };
-    
-
     template<typename F> struct Table {
         static constexpr int max { MAXTABLELENGTH };
         static constexpr F zero { static_cast<F>(0) }, one { static_cast<F>(1) }, two { static_cast<F>(2) }, half { one / two };
-        static constexpr int getOffset(int order) { return static_cast<int>(F(max) * (one - pow(half, order))/half); }
-        Table(F* t, F w, F s = one, F i = zero) : table(t), waveLength(w), slope(s), intercept(i) {}
-        Table(F* t, int o, F s = one, F i = zero) : table(t + getOffset(o)), waveLength(F(max >> o)), slope(s), intercept(i) {}
+        Table(F* t, F w = static_cast<F>(max), F s = one, F i = zero) : table(t), waveLength(w), slope(s), intercept(i) {}
         F operator[](int idx) const { return table[idx]; }
         F operator[](F sample) const {
             F floatIndex { jlimit(zero, one, slope * sample + intercept) * waveLength };
@@ -753,6 +613,82 @@ namespace sadistic {
     void showLevelValue(Slider& slider, Label& label1, Label& label2);
     void setWidgets(Slider& blendKnob, Slider& driveKnob, sadistic::EmpiricalLAF& llaf, Slider& saturationKnob, Slider& filterKnob, sadistic::OuterLookAndFeel& olaf, Slider& gateKnob, Slider& lpfKnob, Label& valueLabel, Label& suffixLabel, Font& font);
     
+    struct DeviantTree {
+        static constexpr int waveLength { WAVELENGTH };
+        DeviantTree(APVTS& s, UndoManager* uM) {
+            auto vts = ValueTree("STATE");
+            double def[waveLength + 1];
+            Wave<double>::fillStaticTable(def, waveLength, Wave<double>::atan, true, true);
+            setWaveTable(s, uM, def);
+            Wave<double>::fillStaticTable(def, waveLength, Wave<double>::atan, true, true);
+            setGainTable(s, uM, def);
+            Wave<double>::fillTable(def, waveLength, Wave<double>::sine, true, true);
+            setPhaseTable(s, uM, def);
+            s.state = vts;
+        }
+        
+        template<typename FloatType> static void getWaveTable(APVTS& apvts, FloatType* dest, bool = false) {
+            auto state = apvts.state;
+            getWaveTable(state, dest);
+            //            auto x { apvts.state.getProperty("waveTable") };
+            //            auto array = x.getArray();
+            //            auto* b = array->begin();
+            //            for(int i { 0 }; i <= waveLength; ++i, ++b) dest[i] = static_cast<FloatType>(double(*b));
+        }
+        template<typename FloatType> static void getWaveTable(ValueTree& vts, FloatType* dest, bool = false) {
+            auto x { vts.getProperty("waveTable") };
+            auto array = x.getArray();
+            auto* b = array->begin();
+            for(int i { 0 }; i <= waveLength; ++i, ++b) dest[i] = static_cast<FloatType>(double(*b));
+        }
+        template<typename FloatType> static void setWaveTable(APVTS& apvts, UndoManager* uM, const FloatType* src) {
+            auto tVar { var(Array<var>()) };
+            auto array = tVar.getArray();
+            for(int i { 0 }; i < waveLength + 1; ++i) array->add(double(src[i]));
+            apvts.state.setProperty("waveTable", tVar, uM);
+        }
+        template<typename FloatType> static void getPhaseTable(APVTS& apvts, FloatType* dest, bool = false) {
+            auto state = apvts.state;
+            getPhaseTable(state, dest);
+            //            const auto& x { state.getProperty("phaseTable") };
+            //            auto* array = x.getArray();
+            //            auto* b = array->begin();
+            //            for(int i { 0 }; i <= waveLength; ++i, ++b) dest[i] = static_cast<FloatType>(double(*b));
+        }
+        template<typename FloatType> static void getPhaseTable(ValueTree& vts, FloatType* dest, bool = false) {
+            auto x { vts.getProperty("phaseTable") };
+            auto* array = x.getArray();
+            auto* b = array->begin();
+            for(int i { 0 }; i <= waveLength; ++i, ++b) dest[i] = static_cast<FloatType>(double(*b));
+        }
+        template<typename FloatType> static void setPhaseTable(APVTS& apvts, UndoManager* uM, const FloatType* src) {
+            auto tVar { var(Array<var>()) };
+            auto* array = tVar.getArray();
+            for(int i { 0 }; i < waveLength + 1; ++i) array->add(double(src[i]));
+            apvts.state.setProperty("phaseTable", tVar, uM);
+        }
+        template<typename FloatType> static void getGainTable(APVTS& apvts, FloatType* dest, bool = false) {
+            auto state = apvts.state;
+            getGainTable(state, dest);
+            //            auto x { apvts.state.getProperty("gainTable") };
+            //            auto array = x.getArray();
+            //            auto* b = array->begin();
+            //            for(int i { 0 }; i <= waveLength; ++i, ++b) dest[i] = static_cast<FloatType>(double(*b));
+        }
+        template<typename FloatType> static void getGainTable(ValueTree& vts, FloatType* dest, bool = false) {
+            auto x { vts.getProperty("gainTable") };
+            auto* array = x.getArray();
+            auto* b = array->begin();
+            for(int i { 0 }; i <= waveLength; ++i, ++b) dest[i] = static_cast<FloatType>(double(*b));
+        }
+        template<typename FloatType> static void setGainTable(APVTS& apvts, UndoManager* uM, const FloatType* src) {
+            auto tVar { var(Array<var>()) };
+            auto* array = tVar.getArray();
+            for(int i { 0 }; i < waveLength + 1; ++i) array->add(double(src[i]));
+            apvts.state.setProperty("gainTable", tVar, uM);
+        }
+    };
+    
     struct DeviantScreen : Component {
         static constexpr int waveLength { WAVELENGTH };
         DeviantScreen(APVTS& a, UndoManager* uM) : apvts(a), undoManager(uM) {}
@@ -761,8 +697,8 @@ namespace sadistic {
         virtual void init() = 0;
         std::atomic<bool> newDataHere { false };
         float wave[waveLength + 1]{}, pWave[waveLength + 1]{};
-        PadGainTable<float> gainTable { wave };
-        PadPhaseTable<float> phaseTable { pWave };
+        Table<float> gainTable { wave };
+        Table<float> phaseTable { pWave };
         APVTS& apvts;
         UndoManager* undoManager;
     };

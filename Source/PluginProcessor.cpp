@@ -31,7 +31,7 @@ sadistic::Deviant::Deviant(AudioProcessorValueTreeState::ParameterLayout layout)
                             "dynamicAtanRoute", "dynamicBitCrusherRoute", "dynamicDeviationRoute", "dynamicWaveShaperRoute", "filterARoute", "filterBRoute", "staticAtanRoute", "staticBitCrusherRoute", "staticDeviationRoute", "staticWaveShaperRoute",
                             
                             "dynamicAtanIndex", "dynamicBitCrusherIndex", "dynamicDeviationIndex", "dynamicWaveShaperIndex", "filterAIndex", "filterBIndex", "staticAtanIndex", "staticBitCrusherIndex", "staticDeviationIndex", "staticWaveShaperIndex");
-    setGainTable(); setWaveTable();
+//    setGainTable(); setWaveTable();
     
 //    struct Printer : Timer {
 //        void timerCallback() override {

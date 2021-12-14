@@ -69,13 +69,12 @@ sadistic::DeviantEditor::DeviantEditor (Deviant& p) : AudioProcessorEditor (&p),
 //    }
     
     scope.prepare({deviant.getSampleRate(), (uint32) 2, (uint32) 1});
-    renderer.start();
     setResizeLimits(150, 75, 1980, 1080);
     setResizable(true, false);
     setSize (600, 300);
 }
 
-sadistic::DeviantEditor::~DeviantEditor () { renderer.stop(); }
+sadistic::DeviantEditor::~DeviantEditor () { }
 
 void sadistic::DeviantEditor::resized() {
     auto bounds { getBounds() };

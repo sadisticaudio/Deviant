@@ -102,7 +102,7 @@ namespace sadistic {
             m.spectralInversionDelay1.process(mainBuffer, spectralInversionBuffer);
 
             AudioBlock<FloatType> block { mainBuffer }, spectralInversionBlock { spectralInversionBuffer }, blendBlock { blendBuffer };
-            m.lpf.process(ProcessContextReplacing<FloatType>(block));
+//            m.lpf.process(ProcessContextReplacing<FloatType>(block));
             
             //subtract out the filtered signal from the spectralInversionBlock
             spectralInversionBlock -= block;
@@ -145,8 +145,8 @@ namespace sadistic {
             blendBlock *= (FloatType(1) - blend);
             
             //push the dry and wet signals seperately to the oscilloscope
-            oscilloscopeFifo[drySignal].pushChannel(blendBlock);
-            oscilloscopeFifo[wetSignal].pushChannel(block);
+            oscilloscopeFifo[drySignal].pushChannel<FloatType>(blendBuffer);
+            oscilloscopeFifo[wetSignal].pushChannel<FloatType>(mainBuffer);
             
             //output the sum of both signals
             block += blendBlock;

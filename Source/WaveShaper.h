@@ -17,7 +17,7 @@ namespace sadistic {
         
         void processSamples(AudioBuffer<FloatType>& buffer) override {
             if(newDataHere) {
-                sadistic::DeviantTree::getWaveTable(apvts, waveTable.table);
+//                sadistic::DeviantTree::getWaveTable(apvts, waveTable.table);
                 newDataHere = false;
             }
             for (int j { 0 }; j < buffer.getNumChannels(); ++j)
