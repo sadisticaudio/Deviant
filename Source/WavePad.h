@@ -98,7 +98,7 @@ namespace sadistic {
         PhasePad(DeviantScreen& s) : screen(s), pad(s) {
             getTheTable();
             phaseBox.setText("PHASE TABLES");
-            for (int i { 1 }; i < Wave<float>::numWaveTables; ++i) phaseBox.addItem(Wave<float>::getWaveID(i), i);
+            for (int i { 1 }; i < Wave<float>::numWaves; ++i) phaseBox.addItem(Wave<float>::getWaveID(i), i);
             phaseBox.onChange = [&,this] {
                 if (static_cast<Wave<float>::Type>(phaseBox.getSelectedId()) > 0) {
                 Wave<float>::fillTable(s.pWave, s.waveLength, static_cast<Wave<float>::Type>(phaseBox.getSelectedId()), true, true);

@@ -6,7 +6,7 @@ namespace sadistic {
     
     using namespace juce::gl;
 
-    enum { wetSignal = 0, drySignal = 1, numSignals };
+//    enum { wetSignal = 0, drySignal = 1, numSignals };
     static constexpr int scopeSize { SCOPESIZE };
     
     struct ScopeRenderer :  public Component, public juce::OpenGLRenderer {

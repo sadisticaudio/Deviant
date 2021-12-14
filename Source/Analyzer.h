@@ -25,50 +25,46 @@ namespace sadistic {
                 scopeBuffer.flush();
             }
 
-            void timerCallback() override {
-                
-                if (scopeFifo.nextFifoBlockReady) {
-                    analyze(dual.getSampleRate());
-                    scopeFifo.nextFifoBlockReady = false;
-                }
-//                if (resetFlag) { reset(); resetFlag = false; }
-            }
+            void timerCallback() override { analyze(dual.getSampleRate()); }
 
             void analyze(const double sampleRate) {
-                auto aBuf { scopeFifo.editorBuffer };
-                if(aBuf[0] != 0.f && aBuf[fifoSize-1] !=0.f) {
-                    float* mockChannel[1] { aBuf };
-                    auto buffer { AudioBuffer<float>(mockChannel, 1, fifoSize) };
-                    float waveLengthInSamples { ((float)sampleRate / lastFreq) };
-                    float numberOfCycles { 8.f };
-                    const int waveDisplayLength { jlimit(10, 6000, static_cast<int>(waveLengthInSamples * numberOfCycles)) };
-                    float speedRatio { (float)waveDisplayLength / 258.f };
+                auto* block { scopeFifo.getBlock() };
+                if (block) {
+                    auto aBuf { block };
+                    if(aBuf[0] != 0.f && aBuf[fifoSize-1] !=0.f) {
+                        float* mockChannel[1] { aBuf };
+                        auto buffer { AudioBuffer<float>(mockChannel, 1, fifoSize) };
+                        float waveLengthInSamples { ((float)sampleRate / lastFreq) };
+                        float numberOfCycles { 8.f };
+                        const int waveDisplayLength { jlimit(10, 6000, static_cast<int>(waveLengthInSamples * numberOfCycles)) };
+                        float speedRatio { (float)waveDisplayLength / 258.f };
 
-                    const int indexOfMax { static_cast<int>(std::distance(aBuf,std::max_element(aBuf, aBuf + fifoSize))) };
-                    const int indexOfMin { static_cast<int>(std::distance(aBuf,std::min_element(aBuf, aBuf + fifoSize))) };
+                        const int indexOfMax { static_cast<int>(std::distance(aBuf,std::max_element(aBuf, aBuf + fifoSize))) };
+                        const int indexOfMin { static_cast<int>(std::distance(aBuf,std::min_element(aBuf, aBuf + fifoSize))) };
 
-                    if(abs(aBuf[indexOfMax]) > abs(aBuf[indexOfMin])) extremity = indexOfMax;
-                    else extremity = indexOfMin;
-                    if(abs(aBuf[extremity]) > 0.4f) keeps = 0.9f;
-                    
-                    const int startIndex = fifoSize - ((waveDisplayLength * 3) / 2 + 1);
-                    interpolator.process(jlimit(20.f / 256.f, (float)(fifoSize - ((size_t)waveDisplayLength + 1) / 256.f), speedRatio), aBuf + startIndex, scopeData1, scopeSize+2);
-                    interpolator.reset();
-                    
-                    for (int i = 0; i < scopeSize; ++i)
-                        scopeData2[i] = scopeData1[i+2];// * 0.8f + scopeData2[i] * keeps;
-                    
-//                    auto rmsOfScopeBuffer2 { scopeBuffer2.getRMSLevel(0, 0, scopeBuffer2.getNumSamples()) };
-                    
-                    auto currentWave { scopeBuffer.getBlankFrame() };
-                    if (currentWave) {
-                        for (int i = 0; i < scopeSize; ++i)
-                            currentWave[i] = scopeData2[i] * 2.f;
+                        if(abs(aBuf[indexOfMax]) > abs(aBuf[indexOfMin])) extremity = indexOfMax;
+                        else extremity = indexOfMin;
+                        if(abs(aBuf[extremity]) > 0.4f) keeps = 0.9f;
                         
-//                        scopeBuffer.set("rms", rmsOfScopeBuffer2);
-                        scopeBuffer.setReadyToRender(currentWave);
+                        const int startIndex = fifoSize - ((waveDisplayLength * 3) / 2 + 1);
+                        interpolator.process(jlimit(20.f / 256.f, (float)(fifoSize - ((size_t)waveDisplayLength + 1) / 256.f), speedRatio), aBuf + startIndex, scopeData1, scopeSize+2);
+                        interpolator.reset();
+                        
+                        for (int i = 0; i < scopeSize; ++i)
+                            scopeData2[i] = scopeData1[i+2];// * 0.8f + scopeData2[i] * keeps;
+                        
+    //                    auto rmsOfScopeBuffer2 { scopeBuffer2.getRMSLevel(0, 0, scopeBuffer2.getNumSamples()) };
+                        
+                        auto currentWave { scopeBuffer.getBlankFrame() };
+                        if (currentWave) {
+                            for (int i = 0; i < scopeSize; ++i)
+                                currentWave[i] = scopeData2[i] * 2.f;
+                            
+    //                        scopeBuffer.set("rms", rmsOfScopeBuffer2);
+                            scopeBuffer.setReadyToRender(currentWave);
+                        }
+                        keeps = jmax(0.f, keeps - 0.1f);
                     }
-                    keeps = jmax(0.f, keeps - 0.1f);
                 }
             }
 

@@ -22,13 +22,62 @@ namespace sadistic {
         staticWaveShaper(createEffect<StaticWaveShaper<FloatType>>(layout, 9, s)),
         params(emplaceParams(layout)) {}
         
+        template <typename Param>
+        static void add (AudioProcessorParameterGroup& group, std::unique_ptr<Param> param)
+        {
+            group.addChild (std::move (param));
+        }
+        
+        template <typename Param>
+        static void add (AudioProcessorValueTreeState::ParameterLayout& group, std::unique_ptr<Param> param)
+        {
+            group.add (std::move (param));
+        }
+        
+        template <typename Param, typename Group>
+        static Param& addToLayout (Group& layout, std::unique_ptr<Param> param)
+        {
+//            auto param = std::make_unique<Param> (std::forward<Ts> (ts)...);
+            auto& ref = *param;
+            add (layout, std::move (param));
+            return ref;
+        }
+        
+        
+//        template <typename Param, typename Group, typename... Ts>
+//        static Param& addToLayout (Group& layout, Ts&&... ts)
+//        {
+//            auto param = std::make_unique<Param> (std::forward<Ts> (ts)...);
+//            auto& ref = *param;
+//            add (layout, std::move (param));
+//            return ref;
+//        }
+        
+        template <typename Param>
+        static Param& addToLayout (APVTS::ParameterLayout& layout, int effectIndex, int paramIndex) {
+            ParamInfo info = paramInfo[effectIndex][paramIndex];
+            String pID { getParamID(effectIndex, paramIndex) }, pName{ getParamName(effectIndex, paramIndex) };
+            std::unique_ptr<AudioParameterFloat> param { nullptr };
+            switch (info.type) {
+                case ParamInfo::dB:
+                    param = std::make_unique<AudioParameterFloat>(pID, pName, NormalisableRange<float>(info.min, info.max), info.defaultValue, translate (" dB"), AudioProcessorParameter::genericParameter, [](float value, int) { return String (value, 1) + " dB"; }, [](String text) { return text.dropLastCharacters(3).getFloatValue(); });
+                case ParamInfo::Hz:
+                    param = std::make_unique<AudioParameterFloat>(pID, pName, NormalisableRange<float>(info.min, info.max), info.defaultValue, translate(" Hz"));
+                default:
+                    param = std::make_unique<AudioParameterFloat>(pID, pName, NormalisableRange<float>(info.min, info.max), info.defaultValue);
+            }
+            auto& ref = *param;
+            layout.add(std::move(param));
+            return ref;
+        }
+        
         template <typename Effect>
-        static inline Effect createEffect (APVTS::ParameterLayout& layout, int effectIndex, APVTS& s) {
+        static Effect createEffect (APVTS::ParameterLayout& layout, int effectIndex, APVTS& s) {
             ParamList refs;
-            refs.emplace_back(addToLayout(layout, std::make_unique<AudioParameterBool>(getFxID(effectIndex) + "Enabled", getFxName(effectIndex) + " Enabled", effectInfo[effectIndex].defaultEnabled)));
-            refs.emplace_back(addToLayout(layout, std::make_unique<AudioParameterInt>(getFxID(effectIndex) + "Route", getFxName(effectIndex) + " Route", 0, 99, effectInfo[effectIndex].defaultRoute)));
-            refs.emplace_back(addToLayout(layout, std::make_unique<AudioParameterInt>(getFxID(effectIndex) + "Index", getFxName(effectIndex) + " Index", 0, 99, effectInfo[effectIndex].defaultIndex)));
-            refs.emplace_back(addToLayout(layout, std::make_unique<AudioParameterFloat>(getFxID(effectIndex) + "Blend", getFxName(effectIndex) + " Blend", 0.f, 1.f, effectInfo[effectIndex].defaultBlend)));
+            refs.emplace_back(addToLayout<AudioParameterBool>(layout, std::make_unique<AudioParameterBool>(getFxID(effectIndex) + "Enabled", getFxName(effectIndex) + " Enabled", effectInfo[effectIndex].defaultEnabled)));
+            refs.emplace_back(addToLayout<AudioParameterInt>(layout, std::make_unique<AudioParameterInt>(getFxID(effectIndex) + "Route", getFxName(effectIndex) + " Route", 0, 99, effectInfo[effectIndex].defaultRoute)));
+            refs.emplace_back(addToLayout<AudioParameterInt>(layout, std::make_unique<AudioParameterInt>(getFxID(effectIndex) + "Index", getFxName(effectIndex) + " Index", 0, 99, effectInfo[effectIndex].defaultIndex)));
+            refs.emplace_back(addToLayout<AudioParameterFloat>(layout, std::make_unique<AudioParameterFloat>(getFxID(effectIndex) + "Blend", getFxName(effectIndex) + " Blend", 0.f, 1.f, effectInfo[effectIndex].defaultBlend)));
             FloatParamList floatRefs;
             for(int i { 0 }; !paramID[effectIndex][i].empty() && i < 4; ++i) {
                 floatRefs.emplace_back(addToLayout<AudioParameterFloat>(layout, effectIndex, i));
@@ -37,7 +86,7 @@ namespace sadistic {
         }
         
         template <typename Effect>
-        static inline Effect createEffect (APVTS::ParameterLayout& layout, int effectIndex, APVTS& s, DynamicAtan<FloatType>& a, DynamicBitCrusher<FloatType>& c, DynamicDeviation<FloatType>& d) {
+        static Effect createEffect (APVTS::ParameterLayout& layout, int effectIndex, APVTS& s, DynamicAtan<FloatType>& a, DynamicBitCrusher<FloatType>& c, DynamicDeviation<FloatType>& d) {
             ParamList refs;
             refs.emplace_back(addToLayout(layout, std::make_unique<AudioParameterBool>(getFxID(effectIndex) + "Enabled", getFxName(effectIndex) + " Enabled", effectInfo[effectIndex].defaultEnabled)));
             refs.emplace_back(addToLayout(layout, std::make_unique<AudioParameterInt>(getFxID(effectIndex) + "Route", getFxName(effectIndex) + " Route", 0, 99, effectInfo[effectIndex].defaultRoute)));

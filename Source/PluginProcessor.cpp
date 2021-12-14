@@ -1,7 +1,7 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 AudioProcessor* JUCE_CALLTYPE createPluginFilter() { return new sadistic::Deviant({}); }
-sadistic::Deviant::Deviant(AudioProcessorValueTreeState::ParameterLayout layout) : AudioProcessor (getDefaultBusesProperties()), membersD(layout, apvts), membersF(membersD), apvts(*this, &undoManager, "PARAMETERS", std::move(layout)), deviantTree(apvts, &undoManager) {
+sadistic::Deviant::Deviant(AudioProcessorValueTreeState::ParameterLayout layout) : AudioProcessor (getDefaultBusesProperties()), mgmt(apvts, &undoManager), membersD(layout, apvts), membersF(membersD), apvts(*this, &undoManager, "PARAMETERS", std::move(layout)) {
     marketplaceStatus.load();
     
     setGainTable(); setWaveTable();
@@ -32,6 +32,12 @@ sadistic::Deviant::Deviant(AudioProcessorValueTreeState::ParameterLayout layout)
                             
                             "dynamicAtanIndex", "dynamicBitCrusherIndex", "dynamicDeviationIndex", "dynamicWaveShaperIndex", "filterAIndex", "filterBIndex", "staticAtanIndex", "staticBitCrusherIndex", "staticDeviationIndex", "staticWaveShaperIndex");
     setGainTable(); setWaveTable();
+    
+//    struct Printer : Timer {
+//        void timerCallback() override {
+//            print(membersF)
+//        }
+//    };
 }
 void sadistic::Deviant::prepareToPlay (double sR, int sPB) { if (getProcessingPrecision() == doublePrecision) prepare(sR, sPB, membersD); else prepare(sR, sPB, membersF); };
 //void sadistic::Deviant::processBlock (AudioBuffer<double>& buffer, MidiBuffer&) { membersD.process(buffer, [&, this](AudioBuffer<double>& buf) { processTheDamnBlock(buf, membersD); }); }

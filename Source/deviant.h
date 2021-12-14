@@ -4,7 +4,15 @@
 
 namespace sadistic {
     
-    enum { numFX = 10, WAVELENGTH = 128 };
+//    enum { numFX = 10, WAVELENGTH = 128 };
+    enum { wetSignal = 0, drySignal = 1, numSignals };
+    enum { numFX = 10, WAVELENGTH = MAXTABLELENGTH };
+    enum { matrix, dials, staticPad, dynamicPad, numDisplays };
+    struct Numbers {
+        static const char*   zero_svg, * one_svg, * two_svg, * three_svg, * four_svg, * five_svg, * six_svg, * seven_svg, * eight_svg, * nine_svg, * drive_svg, * saturate_svg;
+        static const int     zero_svgSize, one_svgSize, two_svgSize, three_svgSize, four_svgSize, five_svgSize, six_svgSize, seven_svgSize, eight_svgSize, nine_svgSize, drive_svgSize, saturate_svgSize; };
+    
+    struct EffectInfo { bool defaultEnabled; int defaultRoute; int defaultIndex; float defaultBlend; int numParams; };
     
     static constexpr std::string_view fxName[] {
         "Dynamic Atan",
@@ -38,55 +46,56 @@ namespace sadistic {
         { true, 1, 0, 0.f, 1 },
         { true, 1, 1, 0.f, 2 },
         { true, 1, 2, 0.f, 3 },
-        { true, 1, 3, 0.f, 1 },
+        { true, 1, 3, 0.f, 3 },
         { true, 0, 0, 0.f, 2 },
         { true, 3, 0, 0.f, 2 },
         { true, 2, 0, 0.f, 1 },
         { true, 2, 1, 0.f, 2 },
         { true, 2, 2, 0.f, 3 },
-        { true, 2, 3, 0.f, 1 }
+        { true, 2, 3, 0.f, 1 },
+        { true, 4, 0, 1.f, 4 }
     };
     
     static constexpr std::string_view paramName[][4] {
         { "Drive" },
         { "Drive", "Floor" },
         { "Drive", "Gate", "Saturation" },
-        { "Drive" },
-        { "Low Cutoff", "High" },
-        { "Low Cutoff", "High" },
+        { "Drive", "Table ID", "Table Position" },
+        { "Low Cutoff", "High Cutoff" },
+        { "Low Cutoff", "High Cutoff" },
         { "Drive" },
         { "Drive", "Floor" },
         { "Drive", "Gate", "Saturation" },
         { "Drive" },
-        { "Blend", "Input Gain", "pre-Blend", "Output Gain" }
+        { "Blend", "Current Screen", "pre-Blend", "Output Gain" }
     };
     
     static constexpr std::string_view paramID[][4] {
         { "Drive" },
         { "Drive", "Floor" },
         { "Drive", "Gate", "Saturation" },
-        { "Drive" },
+        { "Drive", "TableID", "TablePosition" },
         { "Low", "High" },
         { "Low", "High" },
         { "Drive" },
         { "Drive", "Floor" },
         { "Drive", "Gate", "Saturation" },
         { "Drive" },
-        { "blend", "inputGain", "preBlend", "outputGain" }
+        { "blend", "currentScreen", "preBlend", "outputGain" }
     };
     
     static constexpr ParamInfo paramInfo[][4] {
         { { 0.f, 1.f, 0.f, ParamInfo::dB } },
         { { 0.f, 1.f, 0.f, ParamInfo::dB }, { 0.f, 1.f, 0.f, ParamInfo::dB } },
         { { 1.f, 1000.f, 1.f, ParamInfo::dB }, { 1.f, 1000.f, 1.f, ParamInfo::dB }, { 2.f, 50.f, 2.f, ParamInfo::dB } },
-        { { 0.f, 1.f, 0.f, ParamInfo::dB } },
+        { { 0.f, 1.f, 0.f, ParamInfo::dB }, { 0.f, 1.f, 0.f, ParamInfo::dB }, { 0.f, 1.f, 0.f, ParamInfo::dB } },
         { { 20.f, 20000.f, 20.f, ParamInfo::Hz }, { 20.f, 20000.f, 20000.f, ParamInfo::Hz } },
         { { 20.f, 20000.f, 20.f, ParamInfo::Hz }, { 20.f, 20000.f, 20000.f, ParamInfo::Hz } },
         { { 0.f, 1.f, 0.f, ParamInfo::dB } },
         { { 0.f, 1.f, 0.f, ParamInfo::dB }, { 0.f, 1.f, 0.f, ParamInfo::dB } },
         { { 1.f, 1000.f, 1.f, ParamInfo::dB }, { 1.f, 1000.f, 1.f, ParamInfo::dB }, { 2.f, 50.f, 2.f, ParamInfo::dB } },
         { { 0.f, 1.f, 0.f, ParamInfo::dB } },
-        { { 0.f, 100.f, 100.f, ParamInfo::dB }, { 0.f, 1.f, 1.f, ParamInfo::dB }, { 0.f, 100.f, 100.f, ParamInfo::dB }, { 0.f, 1.f, 1.f, ParamInfo::dB } }
+        { { 0.f, 100.f, 100.f, ParamInfo::dB }, { 0.f, 10.f, 1.f, ParamInfo::dB }, { 0.f, 100.f, 100.f, ParamInfo::dB }, { 0.f, 1.f, 1.f, ParamInfo::dB } }
     };
     
     static inline String getFxID(int effectIndex) { return { fxID[effectIndex].data(), fxID[effectIndex].size() }; }
@@ -94,23 +103,7 @@ namespace sadistic {
     static inline String getParamID(int eIndex, int pIndex) { return { getFxID(eIndex) + String(paramID[eIndex][pIndex].data(), paramID[eIndex][pIndex].size()) }; }
     static inline String getParamName(int eIndex, int pIndex) { return { getFxName(eIndex) + " " + String(paramName[eIndex][pIndex].data(), paramName[eIndex][pIndex].size()) }; }
     
-    template <typename Param>
-    static inline Param& addToLayout (APVTS::ParameterLayout& layout, int effectIndex, int paramIndex) {
-        ParamInfo info = paramInfo[effectIndex][paramIndex];
-        String pID { getParamID(effectIndex, paramIndex) }, pName{ getParamName(effectIndex, paramIndex) };
-        std::unique_ptr<AudioParameterFloat> param { nullptr };
-        switch (info.type) {
-            case ParamInfo::dB:
-                param = std::make_unique<AudioParameterFloat>(pID, pName, NormalisableRange<float>(info.min, info.max), info.defaultValue, translate (" dB"), AudioProcessorParameter::genericParameter, [](float value, int) { return String (value, 1) + " dB"; }, [](String text) { return text.dropLastCharacters(3).getFloatValue(); });
-            case ParamInfo::Hz:
-                param = std::make_unique<AudioParameterFloat>(pID, pName, NormalisableRange<float>(info.min, info.max), info.defaultValue, translate(" Hz"));
-            default:
-                param = std::make_unique<AudioParameterFloat>(pID, pName, NormalisableRange<float>(info.min, info.max), info.defaultValue);
-        }
-        auto& ref = *param;
-        layout.add(std::move(param));
-        return ref;
-    }
+    
     
     //        template<typename FloatType> static void getWaveTable(APVTS& state, FloatType* dest, bool = false) {
     //            auto x { state.state.getProperty("waveTable") };
@@ -375,14 +368,334 @@ namespace sadistic {
     };
     
 
+    template<typename F> struct Table {
+        static constexpr int max { MAXTABLELENGTH };
+        static constexpr F zero { static_cast<F>(0) }, one { static_cast<F>(1) }, two { static_cast<F>(2) }, half { one / two };
+        static constexpr int getOffset(int order) { return static_cast<int>(F(max) * (one - pow(half, order))/half); }
+        Table(F* t, F w, F s = one, F i = zero) : table(t), waveLength(w), slope(s), intercept(i) {}
+        Table(F* t, int o, F s = one, F i = zero) : table(t + getOffset(o)), waveLength(F(max >> o)), slope(s), intercept(i) {}
+        F operator[](int idx) const { return table[idx]; }
+        F operator[](F sample) const {
+            F floatIndex { jlimit(zero, one, slope * sample + intercept) * waveLength };
+            auto i { truncatePositiveToUnsignedInt (floatIndex) };
+            F f { floatIndex - F (i) };
+            jassert (isPositiveAndNotGreaterThan (f, one));
+            F x0 { table[i] }, x1 { table[i + 1] };
+            return jmap (f, x0, x1); }
+        F* table{};
+        const F waveLength, slope, intercept;
+    };
     
+    template<typename F> struct SubTable {
+        static constexpr int max { MAXTABLELENGTH };
+        static constexpr F zero { static_cast<F>(0) }, one { static_cast<F>(1) }, two { static_cast<F>(2) }, half { one / two };
+        static constexpr int getOffset(int order) { return static_cast<int>(F(max) * (one - pow(half, order))/half); }
+        SubTable(int o) : order(o) { table.assign((max >> o) + 1, {}); }
+        F operator[](F sample) const {
+            F floatIndex { jlimit(zero, one, sample) * waveLength };
+            auto i { truncatePositiveToUnsignedInt (floatIndex) };
+            F f { floatIndex - F (i) };
+            jassert (isPositiveAndNotGreaterThan (f, one));
+            F x0 { table[i] }, x1 { table[i + 1] };
+            return jmap (f, x0, x1); }
+        std::vector<F> table;
+        const int order;
+        const F waveLength { static_cast<F>(WAVELENGTH >> order) };
+    };
+    
+    template<typename F> struct WaveTable {
+        static constexpr int max { MAXTABLELENGTH }, numOctaves { NUMOCTAVES };
+        static constexpr F zero { static_cast<F>(0) }, one { static_cast<F>(1) };
+        void loadSubTable(int octave, const F* data) {
+            int length { static_cast<int>(subTable[octave].waveLength) };
+            for (int i { 0 }; i <= length; ++i) subTable[octave].table[i] = data[i];
+            subTable[octave].table[length] = zero;
+        }
+        const SubTable<F>& getTable(int length) const noexcept { return subTable[jlimit(0, /* numOctaves - */ 1, int(log2((max*2)/length)))]; }
+        //        F w[max * 2]{}, w0[max + 1]{}, w1[max/2 + 1]{}, w2[max/4 + 1]{}, w3[max/8 + 1]{}, w4[max/16 + 1]{}, w5[max/32 + 1]{};
+        SubTable<F> subTable[numOctaves] { { 0 }, { 1 }, { 2 }, { 3 }, { 4 }, { 5 } };
+    };
+    
+    template<typename F> struct PhaseTableSet {
+        static constexpr int max { MAXTABLELENGTH }, numOctaves { NUMOCTAVES };
+        static constexpr F zero { static_cast<F>(0) }, one { static_cast<F>(1) };
+        
+        PhaseTableSet() { *filter.coefficients = *FilterDesign<F>::designFIRLowpassHalfBandEquirippleMethod(F(0.08), F(-80.0));
+            filterOrder = int(filter.coefficients->getFilterOrder());
+            temp.resize(max + 1);
+            srcBuffer.setSize(1, filterOrder + max + max + 1);
+            dstBuffer.setSize(1, filterOrder + max + max + 1);
+        }
+        
+        const SubTable<F>& getTable(int length, int frame = 0) noexcept { return frames[frame].getTable(length);}//.getReference(frame).getTable(length); }
+        
+        int getNumTables() { return int(frames.size()); }
+        
+        void addFrames(int total) {
+            frames.resize(total);
+            for(int j { 0 }; j < total; ++j) {
+                auto& frame { frames[j] };
+                for(int i { 0 }; i < numOctaves; ++i) {
+                    for (int k { 0 }; k < max >> i; ++k)
+                        frame.subTable[i].table[k] = zero;
+                }
+            }
+        }
+        
+        void loadTables(const AudioBuffer<float>& buffer){
+            int filterDelay { filterOrder/2 };
+            
+            if (srcBuffer.getNumSamples() <= buffer.getNumSamples() + max + filterOrder) srcBuffer.setSize(1, buffer.getNumSamples() + max + filterOrder);
+            if (dstBuffer.getNumSamples() <= buffer.getNumSamples() + max + filterOrder) dstBuffer.setSize(1, buffer.getNumSamples() + max + filterOrder);
+            
+            //copy the first frame once to allow the filter to warm up
+            for (int i { 0 }; i < max; ++i)
+                srcBuffer.setSample(0, i, static_cast<F>(buffer.getSample(0, i)));
+            
+            for (int i { 0 }; i < buffer.getNumSamples(); ++i)
+                srcBuffer.setSample(0, max + i, static_cast<F>(buffer.getSample(0, i)));
+            
+            for (int octave { 0 }, frameLength { max }; octave < numOctaves; ++octave, frameLength /= 2) {
+                
+                //load the frames starting after the first copy
+                for (int f { 0 }; f < int(frames.size()); ++f) {
+                    const F* cSrc { srcBuffer.getReadPointer(0, frameLength + f * frameLength) };
+                    frames[f].loadSubTable(octave, cSrc);
+                }
+                
+                //filter all frames including the extra copy of the first frame
+                AudioBlock<F> srcBlock { srcBuffer }, dstBlock { dstBuffer };
+                filter.process(ProcessContextNonReplacing<F>(srcBlock, dstBlock));
+                
+                //copy, downsampling by 2, the filtered output starting after the filter delay, at the start of the fist copy
+                auto* src { srcBuffer.getWritePointer(0) };
+                const auto* dst { dstBuffer.getReadPointer(0) };
+                for (int i { 0 }; i < (frameLength + frameLength * int(frames.size()))/2; ++i) src[i] = dst[filterDelay + i * 2];
+            }
+        }
+        FIR::Filter<F> filter;
+        AudioBuffer<F> srcBuffer, dstBuffer;
+        
+        int filterOrder;
+        std::vector<WaveTable<F>> frames { 1, WaveTable<F>{} };
+        std::vector<float> temp { 0.f, max + 1 };
+    };
+    
+    String inline getSadisticFolder() {
+        std::vector<String> folders {
+            { { File::getSpecialLocation(File::userApplicationDataDirectory).getFullPathName() + "/Application Support/Sadistic Audio" } },
+            { { File::getSpecialLocation(File::userMusicDirectory).getFullPathName() + "/.sadisticaudio" } }
+        };
+        for(size_t i = 0; i < folders.size(); ++i) {
+            auto resultFile = File(folders[i] + "/test.xml");
+            auto result = resultFile.create();
+            if(result.wasOk())
+                return folders[i];
+        }
+        return {};
+    }
+    
+    struct WaveTableData {
+        WaveTableData(const String& s, const int n, const bool b) : id(s), numFrames(n), builtIn(b) {}
+        File getFile() const {
+            return builtIn ? getSadisticFolder() + "/Wave Tables/Stock/" + id : getSadisticFolder() + "/Wave Tables/User/" + id; }
+        String id;
+        int numFrames;
+        bool builtIn;
+    };
+    
+    struct TableManager {
+        using UM = UndoManager;
+        static constexpr int waveLength { WAVELENGTH };
+        
+        WaveTableData stockTables[2] {
+            { "MATRIXYC64_wav", {}, {} },
+            { "cycle2048_wav", {}, {} } };
+        
+        TableManager(APVTS& a, UM* u) : apvts(a), uM(u) {
+//            for (size_t i { 0 }; i < Wave<float>::numWaves; ++i) {
+//                String id { String(Wave<float>::waveID[i].data(), Wave<float>::waveID[i].size()) + ".wav" };
+//                waveTableFiles.push_back({id, waveLength + 1, true});
+//                auto& t { tables.emplace_back(waveLength + 1, 0.f) };
+//                Wave<float>::fillTable(t.data(), waveLength, Wave<float>::Type(i), true, true);
+//            }
+//            
+//            array.resize(waveLength + 1);
+//            std::copy(tables[1].begin(), tables[1].end(), array.begin());
+//            
+//            for (size_t i { 0 }; i < sizeof(stockTables)/sizeof(WaveTableData); ++i) {
+//                
+//                int dataSize { 0 };
+//                const auto dataPtr { Data::getNamedResource(stockTables[i].id.toUTF8(), dataSize) };
+//                
+//                WavAudioFormat format;
+//                auto inputStream { MemoryInputStream(dataPtr, size_t(dataSize), true) };
+//                auto* reader { format.createReaderFor(&inputStream, true) };
+//                if (reader) {
+//                    SamplerSound ss { {}, *reader, {}, 10, 10.0, 10.0, 10.0 };
+//                    auto* bufferPtr { ss.getAudioData() };
+//                    const auto numSamples { bufferPtr->getNumSamples() };
+//                    auto& t { tables.emplace_back(size_t(numSamples), 0.f) };
+//                    //                    WaveTableData wt;
+//                    //                    wt.id =  ;
+//                    //                    wt.numFrames = static_cast<int>();
+//                    //                    wt.builtIn = true;
+//                    waveTableFiles.emplace_back(stockTables[i].id.dropLastCharacters(4), numSamples/waveLength, true);
+//                    auto* samples { bufferPtr->getReadPointer(0) };
+//                    std::copy(samples, samples + numSamples, t.begin());
+//                }
+//            }
+//            float arr[waveLength + 1];
+//            for (int i { 0 }; i <= waveLength; ++i) arr[i] = -1.f + (2.f * float(i))/float(waveLength);
+//            setTable("waveTable", arr, waveLength + 1);
+//            setTable("gainTable", arr, waveLength + 1);
+        }
+        
+        bool loadTable(File inputFile) {
+            String fileName { inputFile.getFileName().removeCharacters(".wav") };
+            WavAudioFormat format;
+            auto inputStream { FileInputStream(inputFile) };
+            auto* reader { format.createReaderFor(&inputStream, true) };
+            if (reader) {
+                SamplerSound ss { {}, *reader, {}, 10, 10.0, 10.0, 10.0 };
+                auto* bufferPtr { ss.getAudioData() };
+                const auto numSamples { bufferPtr->getNumSamples() };
+                auto& t { tables.emplace_back(size_t(numSamples), 0.f) };
+                waveTableFiles.emplace_back(fileName, numSamples/waveLength, true);
+                auto* samples { bufferPtr->getReadPointer(0) };
+                std::copy(samples, samples + numSamples, t.begin());
+                return true;
+            }
+            return false;
+        }
+        
+        void setTable(Identifier identifier, const float* samples, const int numSamples, UM* u = nullptr) {
+            if (identifier.toString() == "waveTable" || identifier.toString() == "gainTable") {
+                auto& block { getWriteBlock(identifier) };
+                const auto numBytes { sizeof(float) * size_t(numSamples) };
+                block.ensureSize(numBytes);
+                block.copyFrom(samples, 0, numBytes);
+                swapBlock(identifier);
+                apvts.state.setProperty(identifier, getReadBlock(identifier), nullptr);
+            }
+            else {
+                array.resize(size_t(numSamples));
+                std::copy(samples, samples + numSamples, array.begin());
+            }
+        }
+        
+        void getTable(Identifier identifier, float* samples, int numSamples = 0) const {
+            if (identifier.toString() == "waveTable" || identifier.toString() == "gainTable") {
+                const auto& table { apvts.state.getProperty(identifier) };
+                const auto* block { table.getBinaryData() };
+                block->copyTo(static_cast<void*>(samples), 0, block->getSize());
+            }
+            else if (!writing) {
+                //                const auto& table { apvts.state.getProperty(identifier) };
+                //                const auto* block { table.getBinaryData() };
+                if (numSamples == 0) numSamples = array.size();
+                std::copy(array.data(), array.data() + numSamples, samples);
+                //                const auto& block { getReadBlock(identifier) };
+                //                block.copyTo(static_cast<void*>(samples), 0, block.getSize());
+                //                const int numSamples { static_cast<int>(block.getSize()/sizeof(float)) };
+                //                const float* ptr { reinterpret_cast<const float*>(block.getData()) };
+                //                for (int i { 0 }; i < numSamples; ++i) samples[i] = static_cast<F>(ptr[i]);
+                //                std::copy(ptr, ptr + size_t(numSamples), samples);
+            }
+        }
+        
+        MemoryBlock& getWriteBlock(const Identifier& identifier) const {
+            if (identifier.toString().contains("waveTable")) return *waveWriteBlock;
+            if (identifier.toString().contains("gainTable")) return *gainWriteBlock;
+            return *phaseWriteBlock;
+        }
+        const MemoryBlock& getReadBlock(const Identifier& identifier) const {
+            if (identifier.toString().contains("waveTable")) return *waveReadBlock;
+            if (identifier.toString().contains("gainTable")) return *gainReadBlock;
+            return *phaseReadBlock;
+        }
+        void swapBlock(const Identifier& identifier) {
+            if (identifier.toString().contains("waveTable")) blocks[0].swapWith(blocks[1]);
+            if (identifier.toString().contains("gainTable")) blocks[2].swapWith(blocks[3]);
+            else blocks[4].swapWith(blocks[5]);
+        }
+        
+        bool saveTable() {
+            const float idxFloat { *apvts.getRawParameterValue("waveTableID") };
+            const size_t idx { static_cast<size_t>(idxFloat) };
+            auto& table { tables[idx] };
+            const int numSamples { static_cast<int>(table.size()) };
+            float* mockChannel[1] { table.data() };
+            const AudioBuffer<float> buffer { mockChannel, 1, numSamples };
+            File file { waveTableFiles[idx].getFile() };
+            return saveTable(file, buffer);
+        }
+        
+        bool saveTable(File& outputFile) {
+            const int numSamples { static_cast<int>(array.size()) };
+            float* mockChannel[1] { array.data() };
+            const AudioBuffer<float> buffer { mockChannel, 1, numSamples };
+            return saveTable(outputFile, buffer);
+        }
+        
+        bool saveTable(File& outputFile, const AudioBuffer<float>& buffer) {
+            StringPairArray metadataValues = WavAudioFormat::createBWAVMetadata ("Custom WaveTable",
+                                                                                 "originator",
+                                                                                 "originatorRef",
+                                                                                 Time::getCurrentTime(),
+                                                                                 buffer.getNumChannels(),
+                                                                                 "codingHistory");
+            std::unique_ptr<juce::FileOutputStream> outStream;
+            outStream = outputFile.createOutputStream();
+            juce::WavAudioFormat format;
+            std::unique_ptr<juce::AudioFormatWriter> writer;
+            writer.reset(format.createWriterFor(outStream.get(), 44100.0, uint32(buffer.getNumChannels()), 32, metadataValues, 0));
+            
+            if (writer != nullptr) {
+                outStream.release();
+                if (writer->writeFromAudioSampleBuffer (buffer, 0, buffer.getNumSamples())) return true;
+            }
+            return false;
+        }
+        
+        void selectTable(const int index) {
+            size_t idx { static_cast<size_t>(index) };
+            writing = true;
+            array = tables[idx];
+            setTable("phaseTable", tables[idx].data(), int(tables[idx].size()), uM);
+            writing = false;
+        }
+        
+        int getTableLength(const Identifier& identifier) {
+            if (identifier.toString() == "waveTable" || identifier.toString() == "gainTable") {
+                auto tVar { apvts.state.getProperty(identifier, var(MemoryBlock(waveLength))) };
+                auto* data = tVar.getBinaryData();
+                return static_cast<int>(data->getSize() / sizeof(float));
+            }
+            else return static_cast<int>(array.size());
+        }
+        
+        
+        
+        std::vector<float> array;
+        APVTS& apvts;
+        UM* uM;
+        ValueTree props;
+        MemoryBlock blocks[6];
+        MemoryBlock* waveWriteBlock { &blocks[0] }, * gainWriteBlock { &blocks[2] }, * phaseWriteBlock { &blocks[4] };
+        MemoryBlock* waveReadBlock { &blocks[1] }, * gainReadBlock { &blocks[3] }, * phaseReadBlock { &blocks[5] };
+        std::atomic<bool> writing { false };
+        Value tablesChanged { false };
+        std::vector<WaveTableData> waveTableFiles;
+        std::vector<std::vector<float>> tables;
+    };
     
     ////////////////     GRAPHICS      ////////////////////////////////////////////////////////
     
-    struct Numbers {
-        static const char*   zero_svg, * one_svg, * two_svg, * three_svg, * four_svg, * five_svg, * six_svg, * seven_svg, * eight_svg, * nine_svg;
-        static const int     zero_svgSize, one_svgSize, two_svgSize, three_svgSize, four_svgSize, five_svgSize, six_svgSize, seven_svgSize, eight_svgSize, nine_svgSize;
-    };
+//    struct Numbers {
+//        static const char*   zero_svg, * one_svg, * two_svg, * three_svg, * four_svg, * five_svg, * six_svg, * seven_svg, * eight_svg, * nine_svg;
+//        static const int     zero_svgSize, one_svgSize, two_svgSize, three_svgSize, four_svgSize, five_svgSize, six_svgSize, seven_svgSize, eight_svgSize, nine_svgSize;
+//    };
     
     struct EmpiricalLAF    : public LookAndFeel_V4   {
         static constexpr auto numNumbers { 12 }, numNeedles { 112 };

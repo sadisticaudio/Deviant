@@ -33,7 +33,6 @@ ELSE()
     set(AUDIO_PROJECTS_LOCATION "/Users/omar/Music/Projects/Reaper")
 ENDIF()
 
-# file(READ "${CMAKE_CURRENT_SOURCE_DIR}/plistToMerge.plist" plist_content_to_merge)
 add_subdirectory("$ENV{HOME}/Documents/JUCE" JUCE)
 juce_set_vst2_sdk_path($ENV{HOME}/CODE/SDKs/VST3_SDK/VST2_SDK)
 juce_set_aax_sdk_path($ENV{HOME}/CODE/SDKs/AAX_SDK)
@@ -61,7 +60,8 @@ juce_add_plugin(Deviant
     AU_MAIN_TYPE kAudioUnitType_Effect
     AAX_CATEGORY AAX_ePlugInCategory_EQ)
 
-file(GLOB_RECURSE bundle_resources RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "Resources/*")
+file(GLOB_RECURSE resources RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "Resources/*")
+file(GLOB_RECURSE bundle_resources RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "Resources/Deviant.xml")
 
 file(GLOB SourceFiles
     Source/*.h
@@ -114,7 +114,7 @@ TARGET Deviant_AAX POST_BUILD COMMAND
 COMMAND rm -f ~/Library/Preferences/Avid/Pro\ Tools/InstalledAAXPlugIns
 )
 
-juce_add_binary_data(BinaryData HEADER_NAME SadisticData.h NAMESPACE Data SOURCES ../Resources/saLogo.svg  ../Resources/leninSmall.svg ../Resources/leninSmall-1.svg ../Resources/DRIVE.png ../Resources/SATURATE.png ../Resources/SALOGOBlue.svg ../Resources/defaultWaveTable.rawFloatData ../Resources/shadowsIntoLight.ttf ../Resources/droid.otf ../Resources/empiricalLeft.svg ../Resources/empiricalLeftPlain.svg ../Resources/empiricalRight.svg ../Resources/empiricalRightPlain.svg)
+juce_add_binary_data(BinaryData HEADER_NAME SadisticData.h NAMESPACE Data SOURCES ../Resources/saLogo.svg ../Resources/shadowsIntoLight.ttf ${resources})
 
 # juce_add_bundle_resources_directory(Deviant_AAX Resources)
 

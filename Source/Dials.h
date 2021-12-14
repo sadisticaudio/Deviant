@@ -4,8 +4,8 @@ namespace sadistic {
     
     struct Dials : DeviantScreen {
         Dials(APVTS& s, UndoManager* uM) : DeviantScreen(s, uM) {
-            drive.setIMG(Data::DRIVE_png, Data::DRIVE_pngSize);
-            saturate.setIMG(Data::SATURATE_png, Data::SATURATE_pngSize);
+//            drive.setIMG(Data::DRIVE_png, Data::DRIVE_pngSize);
+//            saturate.setIMG(Data::SATURATE_png, Data::SATURATE_pngSize);
             
             driveKnob = std::make_unique<sadistic::EmpiricalSlider>(true);
             saturationKnob = std::make_unique<sadistic::EmpiricalSlider>();

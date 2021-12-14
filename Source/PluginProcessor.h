@@ -163,11 +163,12 @@ namespace sadistic {
         
     private:
         enum { wetSignal = 0, drySignal = 1, numSignals };
+        TableManager mgmt;
         DeviantMembers<double> membersD;
         DeviantMembers<float> membersF;
         UndoManager undoManager;
         APVTS apvts;
-        DeviantTree deviantTree;
+//        DeviantTree deviantTree;
         sadistic::SadisticMarketplaceStatus marketplaceStatus { "hieF" };
         LongFifo<float> oscilloscopeFifo[2]{};
         std::atomic<bool> needsResorting { true };

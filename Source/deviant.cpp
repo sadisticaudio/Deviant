@@ -6,15 +6,21 @@ namespace sadistic {
 }
 
 template<> void sadistic::SadChild<Path>::setIMG (const char* img, const int imgSize) {
-    image.loadPathFromData(img, (size_t) imgSize); }
+//    image.loadPathFromData(img, (size_t) imgSize);
+    
+}
 template<> void sadistic::SadChild<Image>::setIMG (const char* img, const int imgSize) {
-    image = ImageCache::getFromMemory (img, imgSize); }
+//    image = ImageCache::getFromMemory (img, imgSize);
+    
+}
 
 template<> void sadistic::SadChild<Path>::paint (Graphics& g) {
     g.setColour(Colours::grey);
     auto b { getLocalBounds().toFloat().reduced(0.8f) };
-    image.scaleToFit(b.getY(), b.getY(), b.getWidth(), b.getHeight(), Justification::centred);
-    g.fillPath(image); }
+//    image.scaleToFit(b.getY(), b.getY(), b.getWidth(), b.getHeight(), Justification::centred);
+//    g.fillPath(image);
+    
+}
 template<> void sadistic::SadChild<Image>::paint (Graphics&) {}
 
 void sadistic::RoutingMatrix::InsertionPoint::itemDropped (const juce::DragAndDropTarget::SourceDetails& details) {
