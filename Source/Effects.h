@@ -5,10 +5,10 @@ namespace sadistic {
     
     template<typename FloatType>
     struct Atan : public DeviantEffect {
-        enum { driveIndex };
+        enum { driveIndex = 0 };
         static constexpr int waveLength { WAVELENGTH };
         static constexpr FloatType zero { static_cast<FloatType>(0) }, one { static_cast<FloatType>(1) }, two { static_cast<FloatType>(2) }, half { one / two }, quarter { half / two }, pi { MathConstants<FloatType>::pi }, halfPi { MathConstants<FloatType>::halfPi }, twoPi { MathConstants<FloatType>::twoPi };
-        Atan(String eID, ParamList refs, FloatParamList floatRefs, int eIDX, APVTS&) :
+        Atan(String eID, ParamList refs, FloatParamList floatRefs, int eIDX, TableManager&) :
         DeviantEffect(eID, refs, floatRefs, eIDX) {}
         template<typename F> Atan(Atan<F>& other) : DeviantEffect(other) {}
         
@@ -29,38 +29,43 @@ namespace sadistic {
     
     template<typename FloatType>
     struct DynamicAtan : public DeviantEffect {
-        enum { driveIndex };
+        using Coeffs = CalculatedParamCoefficients<FloatType>;
+        enum { drive = 0, attenuation = 6, blend = 7 };
         static constexpr int waveLength { WAVELENGTH };
         static constexpr FloatType zero { static_cast<FloatType>(0) }, one { static_cast<FloatType>(1) }, two { static_cast<FloatType>(2) }, half { one / two }, quarter { half / two }, pi { MathConstants<FloatType>::pi }, halfPi { MathConstants<FloatType>::halfPi }, twoPi { MathConstants<FloatType>::twoPi };
-        DynamicAtan(String eID, ParamList refs, FloatParamList floatRefs, int eIDX, APVTS&) :
+        DynamicAtan(String eID, ParamList refs, FloatParamList floatRefs, int eIDX, TableManager&) :
         DeviantEffect(eID, refs, floatRefs, eIDX) {}
         template<typename F> DynamicAtan(DynamicAtan<F>& other) : DeviantEffect(other) {}
         
-        struct Params { FloatType drive, attenuationFactor, blend; };
-        Params returnParams() {
-            const auto drive { static_cast<FloatType>(params[driveIndex].get().get()) };
+        static inline FloatType processAtanSample(FloatType sample, const Coeffs& p) {
+            return ((fastatan(sample * (one + p(drive) * FloatType(14))) / p(attenuation)) * p(blend)) + sample * (one - p(blend)); }
+//        static constexpr Coeffs returnDefaultParams() const {
+//            const auto lDrive { static_cast<FloatType>(params[drive].get().get()) };
+//            NormalisableRange<FloatType> range { 0.1, 6.0, 0.0, 0.2 }, range2 { 0.7f, 2.0, 0., 1.4 };
+//            const auto lAttenuation { range2.convertFrom0to1(drive) };
+//            const auto lBlend { static_cast<FloatType>(getBlend()) };
+//            Coeffs c{};
+//            c[drive] = zero; c[attenuation] = FloatType(0.7); c[blend] = lBlend;
+//            return c;
+//        }
+        Coeffs returnParams() const {
+            const auto lDrive { static_cast<FloatType>(params[drive].get().get()) };
             NormalisableRange<FloatType> range { 0.1, 6.0, 0.0, 0.2 }, range2 { 0.7f, 2.0, 0., 1.4 };
-            const auto attenuationFactor { range2.convertFrom0to1(drive) };
-            const auto blend { static_cast<FloatType>(getBlend()) };
-            return { drive, attenuationFactor, blend };
+            const auto lAttenuation { range2.convertFrom0to1(drive) };
+            const auto lBlend { static_cast<FloatType>(getBlend()) };
+            Coeffs c{};
+            c[drive] = lDrive; c[attenuation] = lAttenuation; c[blend] = lBlend;
+            return c;
         }
-        static inline FloatType fastatan( FloatType x ) { return (two/pi) * atan(x * pi/two); }
-        static inline FloatType processSample(FloatType sample, const Params& p) {
-            return (fastatan(sample * (one + p.drive * FloatType(14))) / p.attenuationFactor) * p.blend + sample * (one - p.blend);
-        }
+                    static inline FloatType fastatan( FloatType x )  { return (two/pi) * atan(x * pi/two); }
         
         void processSamples(AudioBuffer<FloatType>& buffer) override {
-            const auto drive { static_cast<FloatType>(params[driveIndex].get().get()) };
-            NormalisableRange<FloatType> range { 0.1, 6.0, 0.0, 0.2 }, range2 { 0.7, 2.0, 0., 1.4 };
-            const auto attenuationFactor { range2.convertFrom0to1(drive) };
-            const auto blend { static_cast<FloatType>(getBlend()) };
-            
             const auto p { returnParams() };
             
             for (int channel { 0 }; channel < buffer.getNumChannels(); ++channel) {
                 FloatType* channelData { buffer.getWritePointer (channel) };
                 for (int sample { 0 }; sample < buffer.getNumSamples(); sample++, channelData++)
-                    *channelData = processSample(*channelData, p);
+                    *channelData = processAtanSample(*channelData, p);
             }
         }
     };
@@ -70,7 +75,7 @@ namespace sadistic {
         static constexpr int waveLength { WAVELENGTH };
         static constexpr FloatType zero { static_cast<FloatType>(0) }, one { static_cast<FloatType>(1) }, two { static_cast<FloatType>(2) }, half { one / two }, quarter { half / two };
 
-        BitCrusher(String eID, ParamList refs, FloatParamList floatRefs, int eIDX, APVTS&) :
+        BitCrusher(String eID, ParamList refs, FloatParamList floatRefs, int eIDX, TableManager&) :
         DeviantEffect(eID, refs, floatRefs, eIDX) {}
         template<typename F> BitCrusher(BitCrusher<F>& other) : DeviantEffect(other) {}
 
@@ -106,34 +111,36 @@ namespace sadistic {
     
     template<typename FloatType>
     struct DynamicBitCrusher : public DeviantEffect {
-        enum { driveIndex, floorIndex };
+        using Coeffs = CalculatedParamCoefficients<FloatType>;
+        enum { drive = 0, floorParam, max, attenuation = 6, blend = 7 };
         static constexpr int waveLength { WAVELENGTH };
         static constexpr FloatType zero { static_cast<FloatType>(0) }, one { static_cast<FloatType>(1) }, two { static_cast<FloatType>(2) }, half { one / two }, quarter { half / two };
         
-        DynamicBitCrusher(String eID, ParamList refs, FloatParamList floatRefs, int eIDX, APVTS&) :
+        DynamicBitCrusher(String eID, ParamList refs, FloatParamList floatRefs, int eIDX, TableManager&) :
         DeviantEffect(eID, refs, floatRefs, eIDX) {}
         template<typename F> DynamicBitCrusher(DynamicBitCrusher<F>& other) : DeviantEffect(other) {}
         
-        struct Params { FloatType max, attenuationFactor, blend; };
-        Params returnParams() {
-            auto drive { params[driveIndex].get().get() };
-            auto floor { static_cast<FloatType>(params[floorIndex].get().get()) };
-            const FloatType mapped_crush_floor { floor * FloatType(31) + one };
-            const FloatType crush_floor { FloatType(32) - static_cast<int>(mapped_crush_floor) + one };
+        Coeffs returnParams() {
+            auto lDrive { params[drive].get().get() };
+            auto lFloor { static_cast<FloatType>(params[floorParam].get().get()) };
+            const FloatType mapped_crush_floor { lFloor * FloatType(31) + one };
+            const FloatType crush_floor { FloatType(32 - static_cast<int>(mapped_crush_floor)) + one };
             
             const FloatType mapped_input { drive * (crush_floor - one) + one };
             const int bitDepth { static_cast<int>(crush_floor - mapped_input) + 1 };
             int i { 4 };
             for (; i <= bitDepth; i *= 2) ;
 //            const auto max { static_cast<FloatType>(i - 1) };
-            const auto max { static_cast<FloatType>(powf(floor - one, 4.f)) * 1024 + 1 };
-            const auto attenuationFactor { one };
-            const auto blend { getBlend() };
-            return { max, attenuationFactor, blend };
+            const auto lMax { static_cast<FloatType>(pow(lFloor - one, 4.)) * 1024 + 1 };
+            const auto lAttenuation { one };
+            const auto lBlend { getBlend() };
+            Coeffs c{};
+            c[drive] = lDrive; c[floorParam] = lFloor; c[max] = lMax; c[attenuation] = lAttenuation; c[blend] = lBlend;
+            return c;
         }
         static inline FloatType rround(FloatType f) { return f > zero ? floor(f + half) : ceil(f - half); }
-        static inline FloatType processSample(FloatType sample, const Params& p) {
-            return p.blend * (rround((sample + one) * p.max) / p.max - one) + (one - p.blend) * sample; }
+        static inline FloatType crushSample(FloatType sample, const Coeffs& p) {
+            return p(blend) * (rround((sample + one) * p(max)) / p(max) - one) + (one - p(blend)) * sample; }
 
         void processSamples(AudioBuffer<FloatType>& buffer) {
             const auto p { returnParams() };
@@ -141,7 +148,7 @@ namespace sadistic {
             for (int j { 0 }; j < channels; ++j) {
                 auto* channelData { buffer.getWritePointer(j) };
                 for (int i { 0 }; i < samples; ++i, ++channelData)
-                    *channelData = processSample(*channelData, p);
+                    *channelData = crushSample(*channelData, p);
             }
         }
     };
@@ -151,7 +158,7 @@ namespace sadistic {
         enum { driveIndex, gateIndex, saturationIndex };
         static constexpr int waveLength { WAVELENGTH };
         static constexpr FloatType zero { static_cast<FloatType>(0) }, one { static_cast<FloatType>(1) }, two { static_cast<FloatType>(2) }, half { one / two }, quarter { half / two }, pi { MathConstants<FloatType>::pi }, halfPi { MathConstants<FloatType>::halfPi }, twoPi { MathConstants<FloatType>::twoPi };
-        Deviation(String eID, ParamList refs, FloatParamList floatRefs, int eIDX, APVTS&) :
+        Deviation(String eID, ParamList refs, FloatParamList floatRefs, int eIDX, TableManager&) :
         DeviantEffect(eID, refs, floatRefs, eIDX) {}
         template<typename F> Deviation(Deviation<F>& other) : DeviantEffect(other) {}
         
@@ -186,37 +193,42 @@ namespace sadistic {
     
     template<typename FloatType>
     struct DynamicDeviation : public DeviantEffect {
-        enum { driveIndex, gateIndex, saturationIndex };
+        using Coeffs = CalculatedParamCoefficients<FloatType>;
+        enum { drive = 0, gate, saturation, gateOffset, attenuation = 6, blend = 7 };
         static constexpr int waveLength { WAVELENGTH };
         static constexpr FloatType zero { static_cast<FloatType>(0) }, one { static_cast<FloatType>(1) }, two { static_cast<FloatType>(2) }, half { one / two }, quarter { half / two }, pi { MathConstants<FloatType>::pi }, halfPi { MathConstants<FloatType>::halfPi }, twoPi { MathConstants<FloatType>::twoPi };
         
-        DynamicDeviation(String eID, ParamList refs, FloatParamList floatRefs, int eIDX, APVTS&) :
+        DynamicDeviation(String eID, ParamList refs, FloatParamList floatRefs, int eIDX, TableManager&) :
         DeviantEffect(eID, refs, floatRefs, eIDX) {}
         template<typename F> DynamicDeviation(DynamicDeviation<F>& other) : DeviantEffect(other) {}
         
+        static inline FloatType processSample(FloatType sample, const Coeffs& p) {
+            return (-one - p[gateOffset] + (two/(one + (one / p[gate]) * pow(exp(-p[saturation] * sample),(p[drive]))))) * p[attenuation] * p[blend] + sample * (one - p[blend]); }
+        
         void reset() override {}
         void prepare(const ProcessSpec&) override {}
-        struct Params { FloatType gateOffset, gate, saturation, drive, attenuationFactor, blend; };
-        Params returnParams() {
-            auto driveRange { params[driveIndex].get().getNormalisableRange() };
-            auto saturationRange { params[saturationIndex].get().getNormalisableRange() };
+        Coeffs returnParams() {
+            auto driveRange { params[drive].get().getNormalisableRange() };
+            auto saturationRange { params[saturation].get().getNormalisableRange() };
             
-            const float driveNormal { driveRange.convertTo0to1(params[driveIndex].get()) / 8.f };
-            const float saturationNormal { saturationRange.convertTo0to1(params[saturationIndex].get()) };
+            const float driveNormal { driveRange.convertTo0to1(params[drive].get()) / 8.f };
+            const float saturationNormal { saturationRange.convertTo0to1(params[saturation].get()) };
             const float driveFactor { powf(0.1f,powf(driveNormal,0.1f)) };
             const float saturationFactor { powf(0.15f,powf(saturationNormal,0.2f)) };
-            const auto attenuationFactor { static_cast<FloatType>(powf(driveFactor,powf(saturationFactor,0.4f)) * powf(saturationFactor,powf(driveFactor,0.4f))) };
+            const auto lAttenuation { static_cast<FloatType>(powf(driveFactor,powf(saturationFactor,0.4f)) * powf(saturationFactor,powf(driveFactor,0.4f))) };
             
-            const auto drive { static_cast<FloatType>(params[driveIndex].get()) };
-            const auto gate { static_cast<FloatType>(params[gateIndex].get()) };
-            const auto saturation { static_cast<FloatType>(params[saturationIndex].get()) };
-            const auto blend { static_cast<FloatType>(getBlend()) };
+            const auto lDrive { static_cast<FloatType>(params[drive].get()) };
+            const auto lGate { static_cast<FloatType>(params[gate].get()) };
+            const auto lSaturation { static_cast<FloatType>(params[saturation].get()) };
+            const auto lBlend { static_cast<FloatType>(getBlend()) };
             
-            const auto gateOffset { (((gate + one) / two) - one) / ((gate + one) / two) };
-            return { gateOffset, gate, saturation, drive, attenuationFactor, blend };
+            const auto lGateOffset { (((gate + one) / two) - one) / ((gate + one) / two) };
+            Coeffs c{};
+            c[drive] = lDrive; c[gate] = lGate; c[saturation] = lSaturation; c[gateOffset] = lGateOffset; c[attenuation] = lAttenuation; c[blend] = lBlend;
+            return c;
         }
-        static inline FloatType processSample(FloatType sample, const Params& p) {
-            return (-one - p.gateOffset + (two/(one + (one / p.gate) * pow(exp(-p.saturation * sample),(p.drive))))) * p.attenuationFactor * p.blend + sample * (one - p.blend);
+        static inline FloatType deviateSample(FloatType sample, const Coeffs& p) {
+            return (-one - p(gateOffset) + (two/(one + (one / p(gate)) * pow(exp(-p(saturation) * sample),(p(drive)))))) * p(attenuation) * p(blend) + sample * (one - p(blend));
         }
         void processSamples(AudioBuffer<FloatType>& buffer) override {
             const auto p { returnParams() };
@@ -224,7 +236,7 @@ namespace sadistic {
             for (int channel { 0 }; channel < buffer.getNumChannels(); ++channel) {
                 FloatType* channelData { buffer.getWritePointer (channel) };
                 for (int sample { 0 }; sample < buffer.getNumSamples(); sample++, channelData++) {
-                    processSample(*channelData, p);// = static_cast<FloatType>((-one - gateOffset + (two/(one + (one / gate) * pow(exp(-saturation * *channelData),(drive))))) * attenuationFactor) * blend + *channelData * (one - blend);
+                    deviateSample(*channelData, p);// = static_cast<FloatType>((-one - gateOffset + (two/(one + (one / gate) * pow(exp(-saturation * *channelData),(drive))))) * attenuationFactor) * blend + *channelData * (one - blend);
                     jassert(!isnan(*channelData));
                 }
             }
@@ -234,7 +246,7 @@ namespace sadistic {
     template<typename FloatType>
     struct SadisticFilter : public DeviantEffect {
         enum { lowIndex, highIndex };
-        SadisticFilter(String eID, ParamList refs, FloatParamList floatRefs, int eIDX, APVTS&) :
+        SadisticFilter(String eID, ParamList refs, FloatParamList floatRefs, int eIDX, TableManager&) :
         DeviantEffect(eID, refs, floatRefs, eIDX) {}
         template<typename F> SadisticFilter(SadisticFilter<F>& other) : DeviantEffect(other) {}
         

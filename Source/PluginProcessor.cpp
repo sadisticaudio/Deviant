@@ -1,13 +1,8 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 AudioProcessor* JUCE_CALLTYPE createPluginFilter() { return new sadistic::Deviant({}); }
-sadistic::Deviant::Deviant(AudioProcessorValueTreeState::ParameterLayout layout) : AudioProcessor (getDefaultBusesProperties()), mgmt(apvts, &undoManager), membersD(layout, apvts), membersF(membersD), apvts(*this, &undoManager, "PARAMETERS", std::move(layout)) {
+sadistic::Deviant::Deviant(AudioProcessorValueTreeState::ParameterLayout layout) : AudioProcessor (getDefaultBusesProperties()), mgmt(apvts, &undoManager), membersD(layout, mgmt), membersF(membersD), apvts(*this, &undoManager, "PARAMETERS", std::move(layout)) {
     marketplaceStatus.load();
-    
-    setGainTable(); setWaveTable();
-    double def[WAVELENGTH + 1];
-    Wave<double>::fillTable(def, WAVELENGTH, Wave<double>::sine, true, true);
-    DeviantTree::setPhaseTable(apvts, &undoManager, def);
 
     //this is where all listeners should be added, if possible.  doing so prior means the state might not be ready
     apvts.state.addListener(&membersD.staticWaveShaper);
@@ -20,13 +15,13 @@ sadistic::Deviant::Deviant(AudioProcessorValueTreeState::ParameterLayout layout)
                             "staticBitCrusherDrive", "staticBitCrusherFloor",
                             "staticDeviationDrive", "staticDeviationSaturation", "staticDeviationGate",
                             
-                            "staticAtanBlend", "staticBitCrusherBlend", "staticDeviationBlend",
+                            "staticAtanBlend", "staticBitCrusherBlend", "staticDeviationBlend", "staticWaveShaperBlend",
                             
                             "dynamicAtanDrive", "dynamicAtanGain",
                             "dynamicBitCrusherDrive", "dynamicBitCrusherFloor",
                             "dynamicDeviationDrive", "dynamicDeviationSaturation", "dynamicDeviationGate",
                             
-                            "dynamicAtanBlend", "dynamicBitCrusherBlend", "dynamicDeviationBlend",
+                            "dynamicAtanBlend", "dynamicBitCrusherBlend", "dynamicDeviationBlend", "dynamicWaveShaperBlend",
                             
                             "dynamicAtanRoute", "dynamicBitCrusherRoute", "dynamicDeviationRoute", "dynamicWaveShaperRoute", "filterARoute", "filterBRoute", "staticAtanRoute", "staticBitCrusherRoute", "staticDeviationRoute", "staticWaveShaperRoute",
                             

@@ -27,7 +27,10 @@ namespace sadistic {
         void changeProgramName (int, const String&) override {}
         AudioProcessorEditor* createEditor() override;
         APVTS& getAPVTS() { return apvts; }
+        TableManager& getTableManager() { return mgmt; }
         bool hasEditor() const override { return true; }
+        void setCurrentScreen(int s) { apvts.state.setProperty("currentScreen", s, &undoManager); }
+        int getCurrentScreen() { return apvts.state.getProperty("currentScreen", 1); }
 
         void getStateInformation (MemoryBlock& destinationBlockForAPVTS) override {
             MemoryOutputStream stream(destinationBlockForAPVTS, false);
@@ -44,7 +47,10 @@ namespace sadistic {
             m.dynamicAtan.processSamples(buf);
             m.dynamicDeviation.processSamples(buf);
             m.dynamicBitCrusher.processSamples(buf);
-            DeviantTree::setGainTable(apvts, &undoManager, arr);
+            FloatType rms { Wave<FloatType>::getRMS(arr, WAVELENGTH) }, mult { rms > FloatType(0.01) ? MathConstants<FloatType>::sqrt2/FloatType(2)/rms : FloatType(1) };
+            mult = jmin(FloatType(1), mult);
+            for (int i { 0 }; i < WAVELENGTH; ++i) arr[i] *= mult;
+            mgmt.setTable("gainTable", arr, WAVELENGTH + 1);
         }
         
         template<typename FloatType> void setWaveTable(DeviantMembers<FloatType>& m) {
@@ -55,7 +61,10 @@ namespace sadistic {
             m.staticAtan.processSamples(buf);
             m.staticBitCrusher.processSamples(buf);
             m.staticDeviation.processSamples(buf);
-            DeviantTree::setWaveTable(apvts, &undoManager, arr);
+            FloatType rms { Wave<FloatType>::getRMS(arr, WAVELENGTH) }, mult { rms > FloatType(0.01) ? MathConstants<FloatType>::sqrt2/FloatType(2)/rms : FloatType(1) };
+            mult = jmin(FloatType(1), mult);
+            for (int i { 0 }; i < WAVELENGTH; ++i) arr[i] *= mult;
+            mgmt.setTable("waveTable", arr, WAVELENGTH + 1);
         }
         
         void setGainTable() { if(getProcessingPrecision() == doublePrecision) setGainTable(membersD); else setGainTable(membersF); }
@@ -75,20 +84,17 @@ namespace sadistic {
             const auto latency { static_cast<int>(m.lpf.state->getFilterOrder()/2) + /* m.lpf2.state->getFilterOrder()/2) + */
                 m.filterA.getLatency() + m.filterB.getLatency() + m.dynamicWaveShaper.getLatency() };
             setLatencySamples(latency);
+            m.dynamicWaveShaper.setParams(m.dynamicAtan.returnParams(), m.dynamicBitCrusher.returnParams(), m.dynamicDeviation.returnParams());
             m.blendDelay1.setDelay(latency);
             m.spectralInversionDelay1.setDelay(static_cast<int>(m.lpf.state->getFilterOrder()/2));
             m.spectralInversionDelay2.setDelay(m.dynamicWaveShaper.getLatency() + m.filterA.getLatency() + m.filterB.getLatency() /* + static_cast<int>(m.lpf2.state->getFilterOrder()/2) */);
             m.oversampler.initProcessing(size_t(samplesPerBlock));
         }
         
-//        template<typename FloatType> void processBuffered(AudioBuffer<FloatType>& buffer, DeviantMembers<FloatType>& m) {
-//            m.process(buffer, [&, this](AudioBuffer<FloatType>& buf) { processTheDamnBlock(buf, m); });
-//        }
-
         template<typename FloatType> void processTheDamnBlock(AudioBuffer<FloatType>& buffer, DeviantMembers<FloatType>& m) {
             const int numIns { getMainBusNumInputChannels() }, numOuts { getMainBusNumOutputChannels() }, channels { jmin(numIns, numOuts, 2) }, samples { buffer.getNumSamples() };
             ScopedNoDenormals noDenormals;
-            const auto blend { static_cast<FloatType>(m.params[0].get().get()/FloatType(100)) };
+            const auto blend { static_cast<FloatType>(static_cast<AudioParameterFloat&>(m.params[0].get()).get()/FloatType(100)) };
             AudioBuffer<FloatType> mainBuffer { buffer.getArrayOfWritePointers(), channels, samples };
             
             //create references to our member buffers
@@ -111,7 +117,8 @@ namespace sadistic {
 //            auto upBlock { m.oversampler.processSamplesUp(block) };
             
 //            AudioBuffer<FloatType> upBuffer { upBlock.channels, buffer.getNumChannels(), buffer.getNumSamples() };
-            
+            const auto atanCoeffs = m.dynamicAtan.returnParams(), bitCrusherCoeffs = m.dynamicBitCrusher.returnParams(), deviationCoeffs = m.dynamicDeviation.returnParams();
+            m.dynamicWaveShaper.passParams(atanCoeffs, bitCrusherCoeffs, deviationCoeffs);
             m.dynamicWaveShaper.processSamples(mainBuffer);
             
 //            m.oversampler.processSamplesDown(block);
@@ -168,7 +175,6 @@ namespace sadistic {
         DeviantMembers<float> membersF;
         UndoManager undoManager;
         APVTS apvts;
-//        DeviantTree deviantTree;
         sadistic::SadisticMarketplaceStatus marketplaceStatus { "hieF" };
         LongFifo<float> oscilloscopeFifo[2]{};
         std::atomic<bool> needsResorting { true };

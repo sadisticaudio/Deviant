@@ -389,7 +389,7 @@ void sadistic::showLevelValue(Slider& slider, Label& valueLabel, Label& suffixLa
     valueLabel.setText (currentValueString, dontSendNotification);
     suffixLabel.setText (slider.getTextValueSuffix(), dontSendNotification);};
 
-void sadistic::setWidgets(Slider& blendKnob, Slider& driveKnob, EmpiricalLAF& llaf, Slider& saturationKnob, Slider& hiKnob, OuterLookAndFeel& olaf, Slider& gateKnob, Slider& loKnob, Label& valueLabel, Label& suffixLabel, Font& font) {
+void sadistic::setWidgets(Slider& blendKnob, Slider& driveKnob, EmpiricalLAF& llaf, Slider& saturationKnob, Label& valueLabel, Label& suffixLabel) {
     
     blendKnob.setScrollWheelEnabled(true);
     blendKnob.setSliderStyle(Slider::SliderStyle::LinearHorizontal);
@@ -415,32 +415,6 @@ void sadistic::setWidgets(Slider& blendKnob, Slider& driveKnob, EmpiricalLAF& ll
     saturationKnob.setLookAndFeel(&llaf);
     saturationKnob.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
     saturationKnob.setTextValueSuffix(" :)");
-    
-    gateKnob.setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
-    gateKnob.setRotaryParameters(degreesToRadians(76.f),degreesToRadians(50.f), true);
-    gateKnob.setDoubleClickReturnValue(true,1.0f,ModifierKeys::altModifier);
-    gateKnob.setMouseDragSensitivity (60);
-    gateKnob.setLookAndFeel(&olaf);
-    gateKnob.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
-    gateKnob.setColour(Slider::thumbColourId, Colour(Colour(0xff50af43)));
-    gateKnob.setTextValueSuffix(" dB");
-    
-    hiKnob.setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
-    hiKnob.setDoubleClickReturnValue(true,1.0f,ModifierKeys::altModifier);
-    hiKnob.setMouseDragSensitivity (60);
-    hiKnob.setLookAndFeel(&olaf);
-    hiKnob.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
-    hiKnob.setColour(Slider::thumbColourId, Colour(Colour(0xff50af43)));
-    hiKnob.setTextValueSuffix(" Hz");
-
-    loKnob.setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
-    loKnob.setDoubleClickReturnValue(true,1.0f,ModifierKeys::altModifier);
-    loKnob.setMouseDragSensitivity (60);
-    loKnob.setLookAndFeel(&olaf);
-    loKnob.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
-    loKnob.setTextValueSuffix(" dB");
-    
-    font.setHeight(80);
     
     valueLabel.setLookAndFeel(&llaf);
     suffixLabel.setLookAndFeel(&llaf);

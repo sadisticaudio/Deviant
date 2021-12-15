@@ -5,15 +5,15 @@ namespace sadistic {
     template <typename FloatType>
     struct DeviantMembers {
         
-        static constexpr int bufferLength { BUFFERLENGTH }, maxWaveOrder { 10 }, maxWavelength { 1 << maxWaveOrder }, fifoLength { maxWavelength + bufferLength }, waveLength { WAVELENGTH }, phaseFilterOrder { PhaseTable<FloatType>::phaseFilterOrder }, dOrder { 3 }, dFactor { (1 << dOrder) };
+        static constexpr int bufferLength { BUFFERLENGTH }, maxWaveOrder { 10 }, maxWavelength { 1 << maxWaveOrder }, fifoLength { maxWavelength + bufferLength }, waveLength { WAVELENGTH };
         
         //Constructor for FX: emplaces references of their associated parameters into a vector member variable
         //while adding them to the APVTS, idea stolen from DSPModulePluginDemo. thank you Reuk, Ed, Tom, and Ivan!!!
-        DeviantMembers(APVTS::ParameterLayout& layout, APVTS& s) :
+        DeviantMembers(APVTS::ParameterLayout& layout, TableManager& s) :
         dynamicAtan(createEffect<DynamicAtan<FloatType>>(layout, 0, s)),
         dynamicBitCrusher(createEffect<DynamicBitCrusher<FloatType>>(layout, 1, s)),
         dynamicDeviation(createEffect<DynamicDeviation<FloatType>>(layout, 2, s)),
-        dynamicWaveShaper(createEffect<DynamicWaveShaper<FloatType>>(layout, 3, s, dynamicAtan, dynamicBitCrusher, dynamicDeviation)),
+        dynamicWaveShaper(createEffect<DynamicWaveShaper<FloatType>>(layout, 3, s)),
         filterA(createEffect<SadisticFilter<FloatType>>(layout, 5, s)),
         filterB(createEffect<SadisticFilter<FloatType>>(layout, 4, s)),
         staticAtan(createEffect<Atan<FloatType>>(layout, 6, s)),
@@ -57,12 +57,15 @@ namespace sadistic {
         static Param& addToLayout (APVTS::ParameterLayout& layout, int effectIndex, int paramIndex) {
             ParamInfo info = paramInfo[effectIndex][paramIndex];
             String pID { getParamID(effectIndex, paramIndex) }, pName{ getParamName(effectIndex, paramIndex) };
-            std::unique_ptr<AudioParameterFloat> param { nullptr };
+            std::unique_ptr<Param> param { nullptr };
             switch (info.type) {
                 case ParamInfo::dB:
                     param = std::make_unique<AudioParameterFloat>(pID, pName, NormalisableRange<float>(info.min, info.max), info.defaultValue, translate (" dB"), AudioProcessorParameter::genericParameter, [](float value, int) { return String (value, 1) + " dB"; }, [](String text) { return text.dropLastCharacters(3).getFloatValue(); });
                 case ParamInfo::Hz:
                     param = std::make_unique<AudioParameterFloat>(pID, pName, NormalisableRange<float>(info.min, info.max), info.defaultValue, translate(" Hz"));
+                case ParamInfo::Int:
+                {} break;
+                case ParamInfo::Pct:{} break;
                 default:
                     param = std::make_unique<AudioParameterFloat>(pID, pName, NormalisableRange<float>(info.min, info.max), info.defaultValue);
             }
@@ -71,8 +74,19 @@ namespace sadistic {
             return ref;
         }
         
+        template <typename Param>
+        static Param& addToLayout (APVTS::ParameterLayout& layout, int paramIndex) {
+            ParamInfo info = paramInfo[numFX][paramIndex];
+            String pID { getParamID(numFX, paramIndex) }, pName{ getParamName(numFX, paramIndex) };
+            std::unique_ptr<Param> param { nullptr };
+            param = std::make_unique<AudioParameterInt>(pID, pName, static_cast<int>(info.min), static_cast<int>(info.max), static_cast<int>(info.defaultValue), translate(""));
+            auto& ref = *param;
+            layout.add(std::move(param));
+            return ref;
+        }
+        
         template <typename Effect>
-        static Effect createEffect (APVTS::ParameterLayout& layout, int effectIndex, APVTS& s) {
+        static Effect createEffect (APVTS::ParameterLayout& layout, int effectIndex, TableManager& s) {
             ParamList refs;
             refs.emplace_back(addToLayout<AudioParameterBool>(layout, std::make_unique<AudioParameterBool>(getFxID(effectIndex) + "Enabled", getFxName(effectIndex) + " Enabled", effectInfo[effectIndex].defaultEnabled)));
             refs.emplace_back(addToLayout<AudioParameterInt>(layout, std::make_unique<AudioParameterInt>(getFxID(effectIndex) + "Route", getFxName(effectIndex) + " Route", 0, 99, effectInfo[effectIndex].defaultRoute)));
@@ -85,25 +99,25 @@ namespace sadistic {
             return Effect(getFxID(effectIndex), refs, floatRefs, effectIndex, s);
         }
         
-        template <typename Effect>
-        static Effect createEffect (APVTS::ParameterLayout& layout, int effectIndex, APVTS& s, DynamicAtan<FloatType>& a, DynamicBitCrusher<FloatType>& c, DynamicDeviation<FloatType>& d) {
-            ParamList refs;
-            refs.emplace_back(addToLayout(layout, std::make_unique<AudioParameterBool>(getFxID(effectIndex) + "Enabled", getFxName(effectIndex) + " Enabled", effectInfo[effectIndex].defaultEnabled)));
-            refs.emplace_back(addToLayout(layout, std::make_unique<AudioParameterInt>(getFxID(effectIndex) + "Route", getFxName(effectIndex) + " Route", 0, 99, effectInfo[effectIndex].defaultRoute)));
-            refs.emplace_back(addToLayout(layout, std::make_unique<AudioParameterInt>(getFxID(effectIndex) + "Index", getFxName(effectIndex) + " Index", 0, 99, effectInfo[effectIndex].defaultIndex)));
-            refs.emplace_back(addToLayout(layout, std::make_unique<AudioParameterFloat>(getFxID(effectIndex) + "Blend", getFxName(effectIndex) + " Blend", 0.f, 1.f, effectInfo[effectIndex].defaultBlend)));
-            FloatParamList floatRefs;
-            for(int i { 0 }; !paramID[effectIndex][i].empty() && i < 4; ++i) {
-                floatRefs.emplace_back(addToLayout<AudioParameterFloat>(layout, effectIndex, i));
-            }
-            return Effect(getFxID(effectIndex), refs, floatRefs, effectIndex, s, a, c, d);
-        }
+//        template <typename Effect>
+//        static Effect createEffect (APVTS::ParameterLayout& layout, int effectIndex, APVTS& s, DynamicAtan<FloatType>& a, DynamicBitCrusher<FloatType>& c, DynamicDeviation<FloatType>& d) {
+//            ParamList refs;
+//            refs.emplace_back(addToLayout(layout, std::make_unique<AudioParameterBool>(getFxID(effectIndex) + "Enabled", getFxName(effectIndex) + " Enabled", effectInfo[effectIndex].defaultEnabled)));
+//            refs.emplace_back(addToLayout(layout, std::make_unique<AudioParameterInt>(getFxID(effectIndex) + "Route", getFxName(effectIndex) + " Route", 0, 99, effectInfo[effectIndex].defaultRoute)));
+//            refs.emplace_back(addToLayout(layout, std::make_unique<AudioParameterInt>(getFxID(effectIndex) + "Index", getFxName(effectIndex) + " Index", 0, 99, effectInfo[effectIndex].defaultIndex)));
+//            refs.emplace_back(addToLayout(layout, std::make_unique<AudioParameterFloat>(getFxID(effectIndex) + "Blend", getFxName(effectIndex) + " Blend", 0.f, 1.f, effectInfo[effectIndex].defaultBlend)));
+//            FloatParamList floatRefs;
+//            for(int i { 0 }; !paramID[effectIndex][i].empty() && i < 4; ++i) {
+//                floatRefs.emplace_back(addToLayout<AudioParameterFloat>(layout, effectIndex, i));
+//            }
+//            return Effect(getFxID(effectIndex), refs, floatRefs, effectIndex, s, a, c, d);
+//        }
         
-        FloatParamList emplaceParams(APVTS::ParameterLayout& layout) {
-            FloatParamList paramList;
+        ParamList emplaceParams(APVTS::ParameterLayout& layout) {
+            ParamList paramList;
             paramList.emplace_back(addToLayout<AudioParameterFloat>(layout, numFX, 0));
             paramList.emplace_back(addToLayout<AudioParameterFloat>(layout, numFX, 1));
-            paramList.emplace_back(addToLayout<AudioParameterFloat>(layout, numFX, 2));
+            paramList.emplace_back(addToLayout<AudioParameterInt>(layout, 2));
             paramList.emplace_back(addToLayout<AudioParameterFloat>(layout, numFX, 3));
             return paramList;
         }
@@ -111,7 +125,7 @@ namespace sadistic {
         // like a copy constructor, made to ensure that both double and float DeviantMember structs
         // receive valid parameter references because hosts like to jump back and forth
         template<typename F>
-        DeviantMembers(DeviantMembers<F>& o) : dynamicAtan(o.dynamicAtan), dynamicBitCrusher(o.dynamicBitCrusher), dynamicDeviation(o.dynamicDeviation), dynamicWaveShaper(o.dynamicWaveShaper, dynamicAtan, dynamicBitCrusher, dynamicDeviation), filterA(o.filterA), filterB(o.filterB), staticAtan(o.staticAtan), staticBitCrusher(o.staticBitCrusher), staticDeviation(o.staticDeviation), staticWaveShaper(o.staticWaveShaper), params(o.params) {}
+        DeviantMembers(DeviantMembers<F>& o) : dynamicAtan(o.dynamicAtan), dynamicBitCrusher(o.dynamicBitCrusher), dynamicDeviation(o.dynamicDeviation), dynamicWaveShaper(o.dynamicWaveShaper), filterA(o.filterA), filterB(o.filterB), staticAtan(o.staticAtan), staticBitCrusher(o.staticBitCrusher), staticDeviation(o.staticDeviation), staticWaveShaper(o.staticWaveShaper), params(o.params) {}
         
         void reset() { spectralInversionBuffer.clear(); blendBuffer.clear(); resetAll(dynamicWaveShaper, staticWaveShaper, dynamicDeviation, staticDeviation, dynamicBitCrusher, staticBitCrusher, dynamicAtan, staticAtan, lpf, lpf2, spectralInversionDelay1, spectralInversionDelay2, blendDelay1, blendDelay2, interpolator[0], interpolator[1]); }
         
@@ -177,7 +191,7 @@ namespace sadistic {
         AudioBuffer<FloatType> spectralInversionBuffer, blendBuffer, decimationBuffer;
         sadistic::DelayBuffer<FloatType> spectralInversionDelay1, blendDelay1, spectralInversionDelay2, blendDelay2;
         ProcessorDuplicator<FIR::Filter<FloatType>, FIR::Coefficients<FloatType>> lpf, lpf2;
-        Oversampling<FloatType> oversampler { 2, static_cast<size_t>(dOrder), Oversampling<FloatType>::filterHalfBandFIREquiripple };
+        Oversampling<FloatType> oversampler { 2, static_cast<size_t>(0), Oversampling<FloatType>::filterHalfBandFIREquiripple };
         LagrangePreciseInterpolator<FloatType> interpolator[2];
         
         // Array of base class pointers to the above effects, similar to JUCE's ProcessorBase class,
@@ -186,7 +200,7 @@ namespace sadistic {
         
         // std::vector<reference_wrapper<AudioParameterFloat>> to store parameter references that
         // are not associated with any particular effect
-        FloatParamList params;
+        ParamList params;
     };
 
 }
