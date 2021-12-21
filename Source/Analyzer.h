@@ -4,9 +4,10 @@
 
 namespace sadistic {
     
-    static constexpr int fifoSize { static_cast<int>(FIFOSIZE) };
+    
     
     struct DualScope {
+        static constexpr int fifoSize { FIFOSIZE }, scopeSize { SCOPESIZE };
         DualScope(LongFifo<float>* sf, ScopeBuffer(& wf)[2]) : oscilloscope{ { *this, wf[0], sf[0] }, { *this, wf[1], sf[1] } } {}
         const double getSampleRate() { return lastSampleRate; }
         
@@ -56,7 +57,7 @@ namespace sadistic {
                     auto currentWave { scopeBuffer.getBlankFrame() };
                     if (currentWave) {
                         for (int i = 0; i < scopeSize; ++i)
-                            currentWave[i] = scopeData2[i] * 2.f;
+                             currentWave[i] = scopeData2[i] * 2.f;
                         
                         //                        scopeBuffer.set("rms", rmsOfScopeBuffer2);
                         scopeBuffer.setReadyToRender(currentWave);

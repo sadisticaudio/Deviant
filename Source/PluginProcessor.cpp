@@ -1,45 +1,18 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 AudioProcessor* JUCE_CALLTYPE createPluginFilter() { return new sadistic::Deviant({}); }
-sadistic::Deviant::Deviant(AudioProcessorValueTreeState::ParameterLayout layout) : AudioProcessor (getDefaultBusesProperties()), mgmt(apvts, &undoManager), membersD(layout, mgmt), membersF(membersD), apvts(*this, &undoManager, "PARAMETERS", std::move(layout)) {
-    marketplaceStatus.load();
 
-    //this is where all listeners should be added, if possible.  doing so prior means the state might not be ready
-    apvts.state.addListener(&membersD.staticWaveShaper);
-    apvts.state.addListener(&membersD.dynamicWaveShaper);
-    apvts.state.addListener(&membersF.staticWaveShaper);
-    apvts.state.addListener(&membersF.dynamicWaveShaper);
-    
-    listenToTheseParameters(apvts, this,
-                            "staticAtanDrive", "staticAtanGain",
-                            "staticBitCrusherDrive", "staticBitCrusherFloor",
-                            "staticDeviationDrive", "staticDeviationSaturation", "staticDeviationGate",
-                            
-                            "staticAtanBlend", "staticBitCrusherBlend", "staticDeviationBlend", "staticWaveShaperBlend",
-                            
-                            "dynamicAtanDrive", "dynamicAtanGain",
-                            "dynamicBitCrusherDrive", "dynamicBitCrusherFloor",
-                            "dynamicDeviationDrive", "dynamicDeviationSaturation", "dynamicDeviationGate",
-                            
-                            "dynamicAtanBlend", "dynamicBitCrusherBlend", "dynamicDeviationBlend", "dynamicWaveShaperBlend",
-                            
-                            "dynamicAtanRoute", "dynamicBitCrusherRoute", "dynamicDeviationRoute", "dynamicWaveShaperRoute", "filterARoute", "filterBRoute", "staticAtanRoute", "staticBitCrusherRoute", "staticDeviationRoute", "staticWaveShaperRoute",
-                            
-                            "dynamicAtanIndex", "dynamicBitCrusherIndex", "dynamicDeviationIndex", "dynamicWaveShaperIndex", "filterAIndex", "filterBIndex", "staticAtanIndex", "staticBitCrusherIndex", "staticDeviationIndex", "staticWaveShaperIndex");
-//    setGainTable(); setWaveTable();
-    
-//    struct Printer : Timer {
-//        void timerCallback() override {
-//            print(membersF)
-//        }
-//    };
+sadistic::Deviant::Deviant(AudioProcessorValueTreeState::ParameterLayout layout) : AudioProcessor (getDefaultBusesProperties()), membersD(layout, mgmt, cIdx, coefficients), membersF(membersD), mgmt(apvts, &undoManager, cIdx, coefficients, membersF.dynamicWaveShaper.pWave, membersD.dynamicWaveShaper.pWave, membersF.staticWaveShaper.wave, membersD.staticWaveShaper.wave), apvts(*this, &undoManager, "PARAMETERS", std::move(layout)) {
+    marketplaceStatus.load();
+    membersF.init();
+    membersD.init();
 }
 void sadistic::Deviant::prepareToPlay (double sR, int sPB) { if (getProcessingPrecision() == doublePrecision) prepare(sR, sPB, membersD); else prepare(sR, sPB, membersF); };
-//void sadistic::Deviant::processBlock (AudioBuffer<double>& buffer, MidiBuffer&) { membersD.process(buffer, [&, this](AudioBuffer<double>& buf) { processTheDamnBlock(buf, membersD); }); }
-//void sadistic::Deviant::processBlock (AudioBuffer<float>& buffer, MidiBuffer&) { membersF.process(buffer, [&, this](AudioBuffer<float>& buf) { processTheDamnBlock(buf, membersF); }); }
 void sadistic::Deviant::processBlock (AudioBuffer<float>& buffer, MidiBuffer&) { processTheDamnBlock(buffer, membersF); }
 void sadistic::Deviant::processBlock (AudioBuffer<double>& buffer, MidiBuffer&) { processTheDamnBlock(buffer, membersD); }
-AudioProcessorEditor* sadistic::Deviant::createEditor() { return new sadistic::DeviantEditor (*this); }
+void sadistic::Deviant::processBlockBypassed (AudioBuffer<float>& b, MidiBuffer&) { processTheDamnBlock(b, membersF, true); }
+void sadistic::Deviant::processBlockBypassed (AudioBuffer<double>& b, MidiBuffer&) { processTheDamnBlock(b, membersD, true); }
+
 bool sadistic::Deviant::canApplyBusCountChange (bool, bool, BusProperties&){ return true; }
 
 bool sadistic::Deviant::canAddBus (bool isInput) const {
@@ -61,3 +34,5 @@ bool sadistic::Deviant::isBusesLayoutSupported (const BusesLayout& layout) const
         return true;
     return false;
 }
+
+AudioProcessorEditor* sadistic::Deviant::createEditor() { return new sadistic::DeviantEditor (*this); }

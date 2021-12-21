@@ -6,9 +6,9 @@ namespace sadistic {
     
     using namespace juce::gl;
     
-    static constexpr int scopeSize { SCOPESIZE };
-    
     struct ScopeRenderer :  public Component, public juce::OpenGLRenderer {
+        
+        static constexpr int scopeSize { SCOPESIZE };
         
         ScopeRenderer(APVTS& state, ScopeBuffer(& wf)[numSignals]) : apvts(state), scopeBuffer(wf) {
             mapSamplesToVertices();
@@ -69,7 +69,7 @@ namespace sadistic {
             openGLContext.extensions.glActiveTexture (GL_TEXTURE0);
             glEnable (GL_TEXTURE_2D);
             
-            float blend = powf(*apvts.getRawParameterValue("blend")/100.f, 0.5f);
+            float blend = powf(*apvts.getRawParameterValue("mainBlend"), 0.5f);
             float wtPosition = 0.f;
             
             moonTexture.bind();

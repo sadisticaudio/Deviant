@@ -3,226 +3,63 @@
 namespace sadistic {
     
     enum { gain, phase, numModes };
-    using Lookup = float(*)(DeviantGUIHub&, float);
     
-    class WavePad : public Component {
+    struct GUITable {
+        GUITable(float* g, float*) : table { g, float(SCOPESIZE) } {}
+        float operator[](float norm) const { return table[norm]; }
+        void prepTable() {}
+        Table<float> table;
+        const String type { "static" }, xString { "A M P L I T U D E   I N" }, yString { "A M P L I T U D E   O U T" }, buttonString { "S T A T I C" };
+        const Colour textColour { Colours::black }, bgColour { Colours::grey.darker() };
+    };
+    
+    struct DualGUITable {
+        DualGUITable(float* g, float* p) : gainTable { g, float(SCOPESIZE), 0.5f, 0.5f }, phaseTable { p, float(WAVELENGTH) } {}
+        float operator[](float sample) const {
+            float floatIndex { jlimit(0.f, 1.f, sample) * float(WAVELENGTH) };
+            auto i { truncatePositiveToUnsignedInt (floatIndex) };
+            float f { floatIndex - float (i) };
+            jassert (isPositiveAndNotGreaterThan (f, 1.f));
+            float x0 { phaseTable[static_cast<int>(i)] }, x1 { phaseTable[static_cast<int>(i + 1)] };
+            return gainTable[jmap (f, x0, x1)]; }
+            
+//            return waveTable[norm]; }// gainTable[phaseTable[norm]]; }
+//        void prepTable() { for (int i { 0 }; i <= SCOPESIZE; ++i) wave[i] = gainTable[phaseTable.table[i]]; }
+        float wave[SCOPESIZE + 1]{};
+        Table<float> gainTable, phaseTable, waveTable { wave, float(SCOPESIZE) };
+        const String type { "dynamic" }, xString { "P   H   A   S   E" }, yString { "A M P L I T U D E" }, buttonString { "D Y N A M I C" };
+        const Colour textColour { Colours::white }, bgColour { Colours::blue.darker() };
+    };
+    
+    template <typename TableType> class WavePad : public Component {
         
     public:
-        static constexpr int waveLength { WAVELENGTH };
-        WavePad(DeviantGUIHub& s) : hub(s) {
+        static constexpr int scopeSize { SCOPESIZE };
+        WavePad(float* g, float* p) : table(g, p) {
             setInterceptsMouseClicks(true, true);
             wavePath.preallocateSpace(scopeSize * 4);
         }
-        float yToGain(float y) { return -(y/(getLocalBounds().getHeight()/2.f) - 1.f);  }
+//        float yToGain(float y) { return -(y/(getLocalBounds().getHeight()/2.f) - 1.f);  }
         float gainToY(float gain) { auto h { float(getHeight()) }; return h/2 - gain * (h/2) * 0.707f; }
-        int xToIndex(float x) { return jlimit(0, waveLength, roundToInt(((x) / float(getWidth())) * float(waveLength))); }
+//        int xToIndex(float x) { return jlimit(0, waveLength, roundToInt(((x) / float(getWidth())) * float(waveLength))); }
         float indexToX(int i) { return 15.f + (float(i)/float(scopeSize)) * (getLocalBounds().toFloat().getWidth() - 25.f); }
         void paint (Graphics& g) override {
             wavePath.clear();
-            wavePath.startNewSubPath(indexToX(0), gainToY(lookup(hub, 0.f)));
+            wavePath.startNewSubPath(indexToX(0), gainToY(table[0]));
             float ratio { 0.f };
             for (int i { 0 }; i <= scopeSize; ++i, ratio += 1.f/float(scopeSize)) {
-                if (i == 0 || i == 64 || i == waveLength) {
-                    auto a = ratio;
-                    auto b = lookup(hub, a);
-                    auto c = gainToY(b);
-                    auto d = indexToX(i);
-                    print("i, a, b, c, d", i, a, b, c, d);
-                }
-                wavePath.lineTo(indexToX(i), gainToY(lookup(hub, ratio))); }
+//                if (i == 0 || i == 64 || i == scopeSize) {
+//                    auto a = ratio;
+//                    auto b = table[ratio];
+//                    auto c = gainToY(b);
+//                    auto d = indexToX(i);
+//                    print("i, a, b, c, d", i, a, b, c, d);
+//                }
+                wavePath.lineTo(indexToX(i), gainToY(table[ratio])); }
             g.setColour(Colours::white.darker());
             g.strokePath(wavePath, PathStrokeType(5.f));
         }
-        DeviantGUIHub& hub;
-        Lookup lookup { nullptr };
+        TableType table;
         Path wavePath;
     };
-    
-    struct GainPad : WavePad {
-        GainPad(DeviantGUIHub& s) : WavePad(s) { lookup = [](DeviantGUIHub& h, float f) { return h.lookupGainSample(f); }; }
-        String wavePadType { "static" }, xString { "A M P L I T U D E   I N" }, yString { "A M P L I T U D E   O U T" }, buttonString { "S T A T I C" };
-        Colour textColour { Colours::black }, bgColour { Colours::grey.darker() };
-    };
-    
-    struct PhasePad : WavePad {
-        PhasePad(DeviantGUIHub& s) : WavePad(s) { lookup = [](DeviantGUIHub& h, float f) { return h.lookupPhaseSample(f); }; }
-        String wavePadType { "dynamic" }, xString { "P   H   A   S   E" }, yString { "A M P L I T U D E" }, buttonString { "D Y N A M I C" };
-        Colour textColour { Colours::white }, bgColour { Colours::blue.darker() };
-    };
-    
-//    using namespace std::chrono;
-//    using hi_res = high_resolution_clock;
-//    
-//    enum { gain, phase, numModes };
-//    
-//    class WavePad : public Component {
-//    public:
-//        static constexpr int waveLength { WAVELENGTH };
-//        WavePad(DeviantScreen& s) : screen(s) {
-//            setInterceptsMouseClicks(true, true);
-//        }
-//        void mouseDown(const MouseEvent&) override { t1 = hi_res::now(); drawWaveFreeHand(); }
-//        void mouseDrag(const MouseEvent&) override {
-//            duration<double, std::milli> ms = hi_res::now() - t1;
-//            if (ms.count() > 100.0) {
-//                t1 = hi_res::now();
-//                drawWaveFreeHand();
-//            }
-//        }
-//        float yToGain(float y) { return -(y/(getLocalBounds().getHeight()/2.f) - 1.f);  }
-//        float gainToY(float gain) { return getLocalBounds().toFloat().getCentreY() - gain * (getLocalBounds().toFloat().getHeight()/2.3f); }
-//        int xToIndex(float x) { return jlimit(0, waveLength, roundToInt(((x) / float(getWidth())) * float(waveLength))); }
-//        float indexToX(int i) { return 15.f + (float(i)/float(waveLength)) * (getLocalBounds().toFloat().getWidth() - 25.f); }
-//        void drawWaveFreeHand() {
-//            auto point { getMouseXYRelative().toFloat() };
-//            float g { yToGain(point.y) };
-//            const int clickSpread { 4 }, index { jlimit(1, waveLength - 2, xToIndex(point.x)) }, leftIndex { jlimit(1, index, index - clickSpread) }, rightIndex { jlimit(index, waveLength - 2, index + clickSpread) };
-//            screen.wave[index] = g;
-//            for (int j = index - leftIndex + 1, i = leftIndex; i < index && i < waveLength - 1 && i > 0; ++i, --j) screen.wave[i] = screen.wave[i] + (g - screen.wave[i])/(float(j*4));
-//            for (int j = rightIndex - index + 1, i = rightIndex; i > index && i < waveLength - 1 && i > 0; --i, --j) screen.wave[i] = screen.wave[i] + (g - screen.wave[i])/(float(j*4));
-//            screen.updateWaveTable();
-//            repaint();
-//        }
-//        DeviantScreen& screen;
-//        Path wavePath;
-//        hi_res::time_point t1 = {};
-//    };
-//    
-//    struct GainPadPad : WavePad {
-//        GainPadPad(DeviantScreen& s) : WavePad(s) {}
-//        void paint (Graphics& g) override {
-//            if (screen.newDataHere) { screen.init(); screen.newDataHere = false; }
-//            wavePath.clear();
-//            wavePath.startNewSubPath(indexToX(0), gainToY(screen.wave[0]));
-//            for (int i { 1 }; i <= waveLength; ++i) wavePath.lineTo(indexToX(i), gainToY(screen.wave[i]));
-//            g.setColour(Colours::white.darker());
-//            g.strokePath(wavePath, PathStrokeType(5.f));
-//        }
-//    };
-//    
-//    struct PhasePadPad : WavePad {
-//        PhasePadPad(DeviantScreen& s) : WavePad(s) {}
-//        void paint (Graphics& g) override {
-//            if (screen.newDataHere) { screen.init(); screen.newDataHere = false; }
-//            wavePath.clear();
-//            wavePath.startNewSubPath(indexToX(0), gainToY(screen.gainTable[screen.phaseTable[0]]));
-//            for (int i { 1 }; i <= waveLength; ++i) wavePath.lineTo(indexToX(i), gainToY(screen.gainTable[screen.phaseTable[i]]));
-//            g.setColour(Colours::white.darker());
-//            g.strokePath(wavePath, PathStrokeType(5.f));
-//        }
-//    };
-//    
-//    struct GainPad : Component, ValueTree::Listener {
-//        GainPad(DeviantScreen& s) : screen(s), pad(s) {
-//            getTheTable();
-//            addAllAndMakeVisible(*this, pad, xAxisLabel, yAxisLabel, button);
-//            button.label.set("S T A T I C", Colours::black, Colours::grey.darker());
-//            xAxisLabel.label.setText("A M P L I T U D E   I N", sendNotification);
-//            yAxisLabel.label.setText("A M P L I T U D E   O U T", sendNotification);
-//            screen.apvts.state.addListener(this);
-//        }
-//        ~GainPad() override { screen.apvts.state.removeListener(this); }
-//        void valueTreePropertyChanged(ValueTree&, const Identifier& id) override {
-//            if (id.toString().contains("waveTable")) {
-//                screen.newDataHere = true;
-//                if (isVisible()) pad.repaint(); } }
-//        void resized() override {
-//            button.setBounds(getWidth() - 105, 5, 95, 15);
-//            xAxisLabel.setBounds(0, 9 * getHeight()/10, getWidth(), getHeight()/10);
-//            yAxisLabel.setBounds(0, 0, getHeight()/10, getHeight());
-//            pad.setBounds(getLocalBounds().reduced(20));
-//        }
-//        void setTheTable() { DeviantTree::setWaveTable(screen.apvts, screen.undoManager, screen.wave); }
-//        void getTheTable() { DeviantTree::getWaveTable(screen.apvts, screen.wave); }
-//        String wavePadType { "static" };
-//        SadLabel xAxisLabel { "A M P L I T U D E   I N", false, false, 0.f };
-//        SadLabel yAxisLabel { "A M P L I T U D E   O U T", true, false, -0.5f };
-//        DeviantScreen& screen;
-//        GainPadPad pad;
-//        SadTextButton button { "S T A T I C" };
-//    };
-//    
-//    struct PhasePad : Component, ValueTree::Listener {
-//        PhasePad(DeviantScreen& s) : screen(s), pad(s) {
-//            getTheTable();
-//            phaseBox.setText("PHASE TABLES");
-//            for (int i { 1 }; i < Wave<float>::numWaves; ++i) phaseBox.addItem(Wave<float>::getWaveID(i), i);
-//            phaseBox.onChange = [&,this] {
-//                if (static_cast<Wave<float>::Type>(phaseBox.getSelectedId()) > 0) {
-//                    Wave<float>::fillTable(s.pWave, s.waveLength, static_cast<Wave<float>::Type>(phaseBox.getSelectedId()), true, true);
-//                    DeviantTree::setPhaseTable(screen.apvts, screen.undoManager, screen.pWave); } };
-//            addAllAndMakeVisible(*this, pad, xAxisLabel, yAxisLabel, phaseBox, button);
-//            button.label.set("D Y N A M I C", Colours::white, Colours::blue.darker());
-//            xAxisLabel.label.setText("P   H   A   S   E", sendNotification);
-//            yAxisLabel.label.setText("A M P L I T U D E", sendNotification);
-//            screen.apvts.state.addListener(this);
-//        }
-//        ~PhasePad() override { screen.apvts.state.removeListener(this); }
-//        void valueTreePropertyChanged(ValueTree&, const Identifier& id) override {
-//            if (id.toString().contains("phaseTable") || id.toString().contains("gainTable")) {
-//                screen.newDataHere = true;
-//                if (isVisible())
-//                    repaint(); } }
-//        void resized() override {
-//            button.setBounds(getWidth() - 105, 5, 95, 15);
-//            xAxisLabel.setBounds(0, 9 * getHeight()/10, getWidth(), getHeight()/10);
-//            yAxisLabel.setBounds(0, 0, getHeight()/10, getHeight());
-//            pad.setBounds(getLocalBounds().reduced(20));
-//            phaseBox.setBounds(5,5,150,20);
-//        }
-//        
-//        void setTheTable() { DeviantTree::setPhaseTable(screen.apvts, screen.undoManager, screen.pWave); DeviantTree::setGainTable(screen.apvts, screen.undoManager, screen.wave); }
-//        void getTheTable() { DeviantTree::getPhaseTable(screen.apvts, screen.pWave); DeviantTree::getGainTable(screen.apvts, screen.wave); }
-//        String wavePadType { "dynamic" };
-//        SadBox phaseBox { "Phase Tables" };
-//        SadLabel xAxisLabel { "P   H   A   S   E", false, false, 0.f };
-//        SadLabel yAxisLabel { "A M P L I T U D E", true, false, -0.5f };
-//        SadTextButton button { "D Y N A M I C" };
-//        DeviantScreen& screen;
-//        PhasePadPad pad;
-//    };
-//    
-//    //    template<typename WavePadType> struct DynamicPad : Component {
-//    //        static constexpr int waveLength { WAVELENGTH };
-//    //        DynamicPad(DeviantScreen& s, int& pM) : screen(s), pad(screen), currentMode(pM) {
-//    //
-//    //            button.onClick = [&,this]{ initMode(currentMode = (currentMode + 1) % numModes); };
-//    //            addAllAndMakeVisible(*this, pad, xAxisLabel, yAxisLabel, phaseBox, button);
-//    //            initMode(currentMode = pM);
-//    //        }
-//    //        void initMode(int mode) {
-//    //            phaseBox.setVisible(mode == phase ? true : false);
-//    //            getTheTable(screen.apvts, screen.wave);
-//    //            button.label.set(buttonNames[mode], textColors[mode], bgButtonColors[mode]);
-//    //            xAxisLabel.label.setText(xNames[mode], sendNotification);
-//    //            yAxisLabel.label.setText(yNames[mode], sendNotification);
-//    ////            gainPad.setVisible(mode == gain ? true : false);
-//    ////            phasePad.setVisible(mode == gain ? false : true);
-//    //        }
-//    //
-//    //        void resized() override {
-//    //            button.setBounds(getWidth() - 105, 5, 95, 15);
-//    //            xAxisLabel.setBounds(0, 9 * getHeight()/10, getWidth(), getHeight()/10);
-//    //            yAxisLabel.setBounds(0, 0, getHeight()/10, getHeight());
-//    //            pad.setBounds(getLocalBounds().reduced(20));
-//    ////            phasePad.setBounds(getLocalBounds().reduced(20));
-//    //            phaseBox.setBounds(0,0,150,20);
-//    //        }
-//    //        void setTheTable(APVTS& apvts, UndoManager* uM, float* wave) { if (currentMode == phase) { DeviantTree::setPhaseTable(apvts, uM, screen.pWave); DeviantTree::setGainTable(apvts, uM, wave); } else DeviantTree::setWaveTable(apvts, uM, wave); }
-//    //        void getTheTable(APVTS& apvts, float* wave) { if (currentMode == phase) { DeviantTree::getPhaseTable(apvts, screen.pWave); DeviantTree::getGainTable(apvts, wave); } else DeviantTree::getWaveTable(apvts, wave); }
-//    //
-//    //        DeviantScreen& screen;
-//    //        WavePadType pad { screen };
-//    //        String buttonNames[numModes] { "S T A T I C", "D Y N A M I C" };
-//    //        Colour bgButtonColors[numModes] { Colours::grey.darker(), Colours::blue.darker() }, textColors[numModes] { Colours::black, Colours::white };
-//    //        String xNames[numModes] { "A M P L I T U D E   I N", "P   H   A   S   E" };
-//    //        String yNames[numModes] { "A M P L I T U D E   O U T", "A M P L I T U D E" };
-//    //        SadLabel xAxisLabel { "A M P L I T U D E   I N", false, false, 0.f };
-//    //        SadLabel yAxisLabel { "A M P L I T U D E   O U T", true, false, -0.5f };
-//    //
-//    ////        GainPad gainPad { screen };
-//    ////        PhasePad phasePad { screen };
-//    //        int& currentMode;
-//    //        SadTextButton button { "S T A T I C" };
-//    //    };
 }

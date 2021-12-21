@@ -1,22 +1,18 @@
 #include "deviant.h"
 #include "RoutingMatrix.h"
-//#include "Dials.h"
-namespace sadistic {
 
-}
-
-template<> void sadistic::SadChild<Path>::setIMG (const char* img, const int imgSize) {
+template<> void sadistic::SadChild<Path>::setIMG (const char*, const int) {
 //    image.loadPathFromData(img, (size_t) imgSize);
     
 }
-template<> void sadistic::SadChild<Image>::setIMG (const char* img, const int imgSize) {
+template<> void sadistic::SadChild<Image>::setIMG (const char*, const int) {
 //    image = ImageCache::getFromMemory (img, imgSize);
     
 }
 
 template<> void sadistic::SadChild<Path>::paint (Graphics& g) {
     g.setColour(Colours::grey);
-    auto b { getLocalBounds().toFloat().reduced(0.8f) };
+//    auto b { getLocalBounds().toFloat().reduced(0.8f) };
 //    image.scaleToFit(b.getY(), b.getY(), b.getWidth(), b.getHeight(), Justification::centred);
 //    g.fillPath(image);
     
@@ -85,15 +81,15 @@ void sadistic::RoutingMatrix::InsertionPoint::itemDragExit (const SourceDetails&
     setTransparency(0.f);
     repaint(); }
 
-void sadistic::EmpiricalLAF::drawLinearSlider (Graphics& g, int x, int y, int width, int height, float sliderPos, float minSliderPos, float maxSliderPos, const Slider::SliderStyle style, Slider& slider)  {
-    if (slider.isBar())  {
-        g.setColour (slider.findColour (Slider::trackColourId));
-        g.fillRect (slider.isHorizontal() ? Rectangle<float> (static_cast<float> (x), y + 0.5f, sliderPos - x, height - 1.0f)
-                    : Rectangle<float> (x + 0.5f, sliderPos, width - 1.0f, y + (height - sliderPos)));
-    }
-    else {
-        auto isTwoVal   = (style == Slider::SliderStyle::TwoValueVertical   || style == Slider::SliderStyle::TwoValueHorizontal);
-        auto isThreeVal = (style == Slider::SliderStyle::ThreeValueVertical || style == Slider::SliderStyle::ThreeValueHorizontal);
+void sadistic::EmpiricalLAF::drawLinearSlider (Graphics& g, int x, int y, int width, int height, float sliderPos, float, float, const Slider::SliderStyle, Slider& slider)  {
+//    if (slider.isBar())  {
+//        g.setColour (slider.findColour (Slider::trackColourId));
+//        g.fillRect (slider.isHorizontal() ? Rectangle<float> (static_cast<float> (x), y + 0.5f, sliderPos - x, height - 1.0f)
+//                    : Rectangle<float> (x + 0.5f, sliderPos, width - 1.0f, y + (height - sliderPos)));
+//    }
+//    else {
+//        auto isTwoVal   = (style == Slider::SliderStyle::TwoValueVertical   || style == Slider::SliderStyle::TwoValueHorizontal);
+//        auto isThreeVal = (style == Slider::SliderStyle::ThreeValueVertical || style == Slider::SliderStyle::ThreeValueHorizontal);
         auto trackWidth = jmin (4.0f, slider.isHorizontal() ? height * 0.25f : width * 0.25f);
         Point<float> startPoint (slider.isHorizontal() ? x : x + width * 0.5f, slider.isHorizontal() ? y + height * 0.5f : height + y);
         Point<float> endPoint (slider.isHorizontal() ? width + x : startPoint.x, slider.isHorizontal() ? startPoint.y : y);
@@ -106,29 +102,31 @@ void sadistic::EmpiricalLAF::drawLinearSlider (Graphics& g, int x, int y, int wi
         Path valueTrack;
         Point<float> minPoint, maxPoint;
         
-        if (isTwoVal || isThreeVal) {
-            minPoint = { slider.isHorizontal() ? minSliderPos : width * 0.5f, slider.isHorizontal() ? height * 0.5f : minSliderPos };
-            maxPoint = { slider.isHorizontal() ? maxSliderPos : width * 0.5f, slider.isHorizontal() ? height * 0.5f : maxSliderPos };
-        }
-        else {
+//        if (isTwoVal || isThreeVal) {
+//            minPoint = { slider.isHorizontal() ? minSliderPos : width * 0.5f, slider.isHorizontal() ? height * 0.5f : minSliderPos };
+//            maxPoint = { slider.isHorizontal() ? maxSliderPos : width * 0.5f, slider.isHorizontal() ? height * 0.5f : maxSliderPos };
+//        }
+//        else {
             auto kx = slider.isHorizontal() ? sliderPos : (x + width * 0.5f);
             auto ky = slider.isHorizontal() ? (y + height * 0.5f) : sliderPos;
             minPoint = startPoint;
             maxPoint = { kx, ky };
-        }
+//        }
         
         valueTrack.startNewSubPath (minPoint);
-        valueTrack.lineTo (isThreeVal ? maxPoint : maxPoint);
+        valueTrack.lineTo (
+//                           isThreeVal ? maxPoint :
+                           maxPoint);
         g.setColour (Colour(0xaa000000));
         g.strokePath (valueTrack, { trackWidth, PathStrokeType::curved, PathStrokeType::rounded });
         
-        if (! isTwoVal) {
-            g.setColour (slider.findColour (Slider::thumbColourId));
-            Path skull;
-            skull.loadPathFromData(sadistic::Numbers::eight_svg, (size_t) sadistic::Numbers::eight_svgSize);
-            skull.scaleToFit(roundToInt(maxPoint.x)-4, roundToInt(maxPoint.y)-5, 10, 10, true);
-        }
-    }
+//        if (! isTwoVal) {
+//            g.setColour (slider.findColour (Slider::thumbColourId));
+//            Path skull;
+//            skull.loadPathFromData(sadistic::Numbers::eight_svg, (size_t) sadistic::Numbers::eight_svgSize);
+//            skull.scaleToFit(roundToInt(maxPoint.x)-4, roundToInt(maxPoint.y)-5, 10, 10, true);
+//        }
+//    }
 }
 
 void sadistic::EmpiricalLAF::drawComboBox  (Graphics& g, int width, int height, bool, int, int, int, int, ComboBox& box) {
@@ -146,7 +144,6 @@ void sadistic::EmpiricalLAF::drawComboBox  (Graphics& g, int width, int height, 
     path.startNewSubPath ((float) arrowZone.getX() + 3.0f, (float) arrowZone.getCentreY() - 2.0f);
     path.lineTo ((float) arrowZone.getCentreX(), (float) arrowZone.getCentreY() + 3.0f);
     path.lineTo ((float) arrowZone.getRight() - 3.0f, (float) arrowZone.getCentreY() - 2.0f);
-    
     g.setColour (box.findColour (ComboBox::arrowColourId).withAlpha ((box.isEnabled() ? 0.9f : 0.2f)));
     g.strokePath (path, PathStrokeType (2.0f));
 }
@@ -157,11 +154,6 @@ void sadistic::EmpiricalLAF::drawRotarySlider (Graphics& g, int x, int y, int wi
     auto& eSlider { static_cast<sadistic::EmpiricalSlider&>(slider) };
     bool left { eSlider.isLeft };
     Rectangle<float> r (x, y, width, height);
-    
-    
-
-    Path need;
-    
     Path needles[numNeedles], num[numNumbers];
     Path tensPlaceDigits[numNumbers], hundredsPlaceDigits[2];
     if (!eSlider.isSmall) {
@@ -306,57 +298,6 @@ void sadistic::RightEmpiricalLAF::drawLabel (Graphics& g, Label& label) {
     
 }
 
-void sadistic::OuterLookAndFeel::drawRotarySlider (Graphics& g, int x, int y, int width, int height, float sliderPos, float rotaryStartAngle, float rotaryEndAngle, Slider& slider) {
-    auto outline {Colour(0x00000000)}, fill {Colour(0xaa000000)};
-    auto bounds {Rectangle<int> (x, y, width, height).toFloat().reduced (10)};
-    auto radius { static_cast<float>(slider.getWidth()/2) }, lineW {4.0f}, arcRadius {radius - lineW * 0.5f}, toAngle {rotaryStartAngle + sliderPos * (rotaryEndAngle - rotaryStartAngle)};
-    Path backgroundArc;
-    backgroundArc.addCentredArc (bounds.getCentreX(), bounds.getCentreY(), arcRadius, arcRadius, 0.0f, rotaryStartAngle, rotaryEndAngle, true);
-    g.setColour (outline);
-    if (slider.isEnabled()) {
-        Path valueArc;
-        valueArc.addCentredArc (bounds.getCentreX(), bounds.getCentreY(), arcRadius, arcRadius, 0.0f, rotaryStartAngle, rotaryEndAngle, true);
-        g.setColour (fill);
-//        g.strokePath (valueArc, PathStrokeType (lineW, PathStrokeType::curved, PathStrokeType::rounded));
-    }
-    auto& rSlider { dynamic_cast<OuterSlider&>(slider) };
-    auto top { rSlider.isOnTop() }, left { rSlider.isOnLeft() };
-    if(left) {
-        auto digitBox { Rectangle<float>(20.f, 6.f).withCentre({ 10.f, height/2.f }) };
-
-        Path p;
-        auto filterWidth { 2.f };
-        if(top) {
-            p.addRectangle(digitBox.getCentreX() - 6.f, digitBox.getCentreY() - filterWidth/2.f, 16.f, filterWidth);
-            p.addTriangle(digitBox.getX(), digitBox.getBottom(), digitBox.getCentreX() - 6.f, digitBox.getCentreY() - filterWidth, digitBox.getCentreX() - 6.f, digitBox.getCentreY() + filterWidth);
-        }
-        else {
-            p.startNewSubPath(digitBox.getX(), digitBox.getCentreY());
-            p.lineTo(digitBox.getCentreX() + 6.f, digitBox.getCentreY());
-            p.lineTo(digitBox.getRight(), digitBox.getBottom());
-        }
-
-        const auto angle = rotaryStartAngle + sliderPos * (rotaryEndAngle - rotaryStartAngle);
-        const auto rot = AffineTransform::rotation (angle + MathConstants<float>::halfPi, slider.getLocalBounds().getCentreX(), slider.getLocalBounds().getCentreY());
-        g.setColour(Colours::white);
-        g.strokePath(p, {PathStrokeType(5.f)}, rot);
-        g.fillPath(p, rot);
-}
-    Point<float> thumbPoint (bounds.getCentreX() + arcRadius * std::cos (toAngle - MathConstants<float>::halfPi), bounds.getCentreY() + arcRadius * std::sin (toAngle - MathConstants<float>::halfPi));
-    g.setColour (slider.findColour (Slider::thumbColourId));
-}
-
-bool sadistic::OuterSlider::hitTest (int x, int y)    {
-    const auto rParams = getRotaryParameters();
-    NormalisableRange<double> range { getMinimum(), getMaximum(), 0.0, getSkewFactor() };
-    auto bounds {getLocalBounds().toFloat().reduced (10)};
-    auto radius { static_cast<float>(getWidth()/2) }, lineW {4.0f}, arcRadius {radius - lineW * 0.5f}, toAngle { static_cast<float>(rParams.startAngleRadians + range.convertTo0to1(getValue()) * (rParams.endAngleRadians - rParams.startAngleRadians)) };
-    
-    Point<int> thumbPoint (static_cast<int>(bounds.getCentreX() + arcRadius * std::cos (toAngle - MathConstants<float>::halfPi)), static_cast<int>(bounds.getCentreY() + arcRadius * std::sin (toAngle - MathConstants<float>::halfPi)));
-    
-    return Point<int>(x,y).getDistanceFrom(thumbPoint) < 20;
-};
-
 bool sadistic::EmpiricalSlider::hitTest (int x, int y)    {
     auto centre = Point<int>(getLocalBounds().getCentre());
     return centre.getDistanceFrom({ x, y }) < getWidth()/2;};
@@ -389,13 +330,12 @@ void sadistic::showLevelValue(Slider& slider, Label& valueLabel, Label& suffixLa
     valueLabel.setText (currentValueString, dontSendNotification);
     suffixLabel.setText (slider.getTextValueSuffix(), dontSendNotification);};
 
-void sadistic::setWidgets(Slider& blendKnob, Slider& driveKnob, EmpiricalLAF& llaf, Slider& saturationKnob, Label& valueLabel, Label& suffixLabel) {
+void sadistic::setWidgets(Slider& blendKnob, Slider& driveKnob, EmpiricalLAF&, Slider& saturationKnob, Label& valueLabel, Label& suffixLabel) {
     
     blendKnob.setScrollWheelEnabled(true);
     blendKnob.setSliderStyle(Slider::SliderStyle::LinearHorizontal);
     blendKnob.setDoubleClickReturnValue(true,1.0f,ModifierKeys::altModifier);
     blendKnob.setMouseDragSensitivity (50);
-    blendKnob.setLookAndFeel(&llaf);
     blendKnob.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
     blendKnob.setColour(Slider::thumbColourId, Colours::cadetblue);
     blendKnob.setTextValueSuffix("%");
@@ -404,7 +344,6 @@ void sadistic::setWidgets(Slider& blendKnob, Slider& driveKnob, EmpiricalLAF& ll
     driveKnob.setRotaryParameters(0.0f, 5.81333f, true);
     driveKnob.setDoubleClickReturnValue(true,1.0f,ModifierKeys::altModifier);
     driveKnob.setMouseDragSensitivity (100);
-    driveKnob.setLookAndFeel(&llaf);
     driveKnob.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
     driveKnob.setTextValueSuffix(" ;)");
     
@@ -412,12 +351,8 @@ void sadistic::setWidgets(Slider& blendKnob, Slider& driveKnob, EmpiricalLAF& ll
     saturationKnob.setRotaryParameters(degreesToRadians(180.f), degreesToRadians(513.f), true);
     saturationKnob.setDoubleClickReturnValue(true,1.0f,ModifierKeys::altModifier);
     saturationKnob.setMouseDragSensitivity (100);
-    saturationKnob.setLookAndFeel(&llaf);
     saturationKnob.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
     saturationKnob.setTextValueSuffix(" :)");
-    
-    valueLabel.setLookAndFeel(&llaf);
-    suffixLabel.setLookAndFeel(&llaf);
     valueLabel.setJustificationType(Justification::centred);
     
     valueLabel.setColour(juce::Label::textColourId, Colours::lightgrey);

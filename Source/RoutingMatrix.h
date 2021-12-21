@@ -2,9 +2,6 @@
 #include "deviant.h"
 namespace sadistic {
     
-    using namespace std::chrono;
-    using hi_res = high_resolution_clock;
-    
     struct RoutingMatrix : DragAndDropContainer, DeviantScreen {
         
         struct Icon : public Component {
@@ -131,7 +128,7 @@ namespace sadistic {
         
         enum { preRoute, upperRoute, lowerRoute, postRoute, numRoutes };
         
-        RoutingMatrix(DeviantGUIHub& h) : DeviantScreen(h) {
+        RoutingMatrix(TableManager& m) : DeviantScreen(m) {
             
             EffectRoutingState tempFX[numFX];
             for (int i { 0 }; i < numFX; ++i) {
@@ -169,14 +166,14 @@ namespace sadistic {
             }
             for (int row = 0; row < numRoutes; ++row) {
                 for (int i { 0 }; i < fx[row].size()-1; ++i) {
-                    if (fx[row][i].index != i) { String iString { fx[row][i]->effectID + "Index" }; hub.mgmt.apvts.getParameter(iString)->beginChangeGesture(); fx[row][i]->indexSlider.setValue(i); }
-                    if (fx[row][i].route != row) { String rString { fx[row][i]->effectID + "Route" }; hub.mgmt.apvts.getParameter(rString)->beginChangeGesture(); fx[row][i]->routeSlider.setValue(row); }
+                    if (fx[row][i].index != i) { String iString { fx[row][i]->effectID + "Index" }; mgmt.apvts.getParameter(iString)->beginChangeGesture(); fx[row][i]->indexSlider.setValue(i); }
+                    if (fx[row][i].route != row) { String rString { fx[row][i]->effectID + "Route" }; mgmt.apvts.getParameter(rString)->beginChangeGesture(); fx[row][i]->routeSlider.setValue(row); }
                 }
             }
             for (int row = 0; row < numRoutes; ++row) {
                 for (int i { 0 }; i < fx[row].size()-1; ++i) {
-                    if (fx[row][i].index != i) { String iString { fx[row][i]->effectID + "Index" }; hub.mgmt.apvts.getParameter(iString)->endChangeGesture(); fx[row].getReference(i).index = i;  }
-                    if (fx[row][i].route != row) { String rString { fx[row][i]->effectID + "Route" }; hub.mgmt.apvts.getParameter(rString)->endChangeGesture(); fx[row].getReference(i).route = row;  }
+                    if (fx[row][i].index != i) { String iString { fx[row][i]->effectID + "Index" }; mgmt.apvts.getParameter(iString)->endChangeGesture(); fx[row].getReference(i).index = i;  }
+                    if (fx[row][i].route != row) { String rString { fx[row][i]->effectID + "Route" }; mgmt.apvts.getParameter(rString)->endChangeGesture(); fx[row].getReference(i).route = row;  }
                 }
             }
             layOutItems();
@@ -259,7 +256,7 @@ namespace sadistic {
         
         LeftEmpiricalLAF lelaf;
         RightEmpiricalLAF relaf;
-        Effect effects[numFX] { { *this, getFxID(0), hub.mgmt.apvts }, { *this, getFxID(1), hub.mgmt.apvts }, { *this, getFxID(2), hub.mgmt.apvts }, { *this, getFxID(3), hub.mgmt.apvts }, { *this, getFxID(4), hub.mgmt.apvts }, { *this, getFxID(5), hub.mgmt.apvts }, { *this, getFxID(6), hub.mgmt.apvts }, { *this, getFxID(7), hub.mgmt.apvts }, { *this, getFxID(8), hub.mgmt.apvts }, { *this, getFxID(9), hub.mgmt.apvts } };
+        Effect effects[numFX] { { *this, getFxID(0), mgmt.apvts }, { *this, getFxID(1), mgmt.apvts }, { *this, getFxID(2), mgmt.apvts }, { *this, getFxID(3), mgmt.apvts }, { *this, getFxID(4), mgmt.apvts }, { *this, getFxID(5), mgmt.apvts }, { *this, getFxID(6), mgmt.apvts }, { *this, getFxID(7), mgmt.apvts }, { *this, getFxID(8), mgmt.apvts }, { *this, getFxID(9), mgmt.apvts } };
         InsertionPoint endPoint[numRoutes] { { *this, 0 }, { *this, 1 }, { *this, 2 }, { *this, 3 } };
         Array<EffectRoutingState> fx[numRoutes];
         Rectangle<int> routeBounds[numRoutes];
@@ -269,10 +266,10 @@ namespace sadistic {
         Frame frames[numSliders + 2];
         EmpiricalSlider knobs[numSliders] { { true, true }, { false, true }, { true, true }, { false, true } };
         APVTS::SliderAttachment attachments[numSliders] {
-            { hub.mgmt.apvts, { "filterALow" },      knobs[0] },
-            { hub.mgmt.apvts, { "filterAHigh" },     knobs[1] },
-            { hub.mgmt.apvts, { "filterBLow" },      knobs[2] },
-            { hub.mgmt.apvts, { "filterBHigh" },     knobs[3] }
+            { mgmt.apvts, { "filterALow" },      knobs[0] },
+            { mgmt.apvts, { "filterAHigh" },     knobs[1] },
+            { mgmt.apvts, { "filterBLow" },      knobs[2] },
+            { mgmt.apvts, { "filterBHigh" },     knobs[3] }
         };
         SadLabel labels[2] { { "FILTER A", false, false, 0.f }, { "FILTER B", false, false, 0.f } };
     };

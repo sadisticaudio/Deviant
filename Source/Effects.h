@@ -3,279 +3,170 @@
 
 namespace sadistic {
     
-    template<typename FloatType>
+    template<typename F>
     struct Atan : public DeviantEffect {
-        enum { driveIndex = 0 };
-        static constexpr int waveLength { WAVELENGTH };
-        static constexpr FloatType zero { static_cast<FloatType>(0) }, one { static_cast<FloatType>(1) }, two { static_cast<FloatType>(2) }, half { one / two }, quarter { half / two }, pi { MathConstants<FloatType>::pi }, halfPi { MathConstants<FloatType>::halfPi }, twoPi { MathConstants<FloatType>::twoPi };
-        Atan(String eID, ParamList refs, FloatParamList floatRefs, int eIDX, TableManager&) :
-        DeviantEffect(eID, refs, floatRefs, eIDX) {}
-        template<typename F> Atan(Atan<F>& other) : DeviantEffect(other) {}
-        
-        void processSamples(AudioBuffer<FloatType>& buffer) override {
-            const auto drive { static_cast<FloatType>(params[driveIndex].get().get()) };
-            NormalisableRange<FloatType> range { 0.1, 6.0, 0.0, 0.2 }, range2 { 0.7f, 2.0, 0., 1.4 };
-            const auto attenuationFactor { range2.convertFrom0to1(drive) };
-            const auto blend { static_cast<FloatType>(getBlend()) };
-
-            for (int channel { 0 }; channel < buffer.getNumChannels(); ++channel) {
-                FloatType* channelData { buffer.getWritePointer (channel) };
-                for (int sample { 0 }; sample < buffer.getNumSamples(); sample++, channelData++)
-                    *channelData = (fastatan(*channelData * (one + drive * FloatType(14))) / attenuationFactor) * blend + *channelData * (one - blend);
+        Atan(String eID, ParamList refs, FloatParamList floatRefs, int eIDX, TableManager& m, std::atomic<int>& cI, float(& cS)[maxCoeffs][maxCoeffs]) :
+        DeviantEffect(eID, refs, floatRefs, eIDX, m), coeffIdx(cI), coeffArray(cS) {}
+        template<typename OtherFloatType> Atan(Atan<OtherFloatType>& other) : DeviantEffect(other), coeffIdx(other.coeffIdx), coeffArray(other.coeffArray) {}
+        void processSamples(AudioBuffer<float>& buffer) override { processSamples<float>(buffer); }
+        void processSamples(AudioBuffer<double>& buffer) override { processSamples<double>(buffer); }
+        void calculateCoefficients() override {
+            auto& [drive, noName1, noName2, noName3, noName4, noName5, attenuation, blend] = coeffs;
+            attenuation = jmap(powf(drive, 0.5f), 1.f, 0.4f);
+            int currentIndex { coeffIdx };
+            float* newCoeffSet { coeffArray[++currentIndex%=maxCoeffs] };
+            for (int i { 0 }; i < maxCoeffs; ++i) newCoeffSet[i] = coeffs[i];
+            coeffIdx = currentIndex;
+        }
+        template<typename FloatType> void processSamples(AudioBuffer<FloatType>& buffer) {
+            if constexpr (std::is_same<F, FloatType>::value) {
+                for (int channel { 0 }; channel < buffer.getNumChannels(); ++channel) {
+                    F* channelData { buffer.getWritePointer (channel) };
+                    for (int sample { 0 }; sample < buffer.getNumSamples(); sample++, channelData++)
+                        *channelData = processAtan(*channelData, coeffs);
+                }
             }
         }
-        inline FloatType fastatan( FloatType x ) { return (two/pi) * atan(x * pi/two); }
+        std::atomic<int>& coeffIdx;
+        float(& coeffArray)[maxCoeffs][maxCoeffs];
     };
     
-    template<typename FloatType>
-    struct DynamicAtan : public DeviantEffect {
-        using Coeffs = CalculatedParamCoefficients<FloatType>;
-        enum { drive = 0, attenuation = 6, blend = 7 };
-        static constexpr int waveLength { WAVELENGTH };
-        static constexpr FloatType zero { static_cast<FloatType>(0) }, one { static_cast<FloatType>(1) }, two { static_cast<FloatType>(2) }, half { one / two }, quarter { half / two }, pi { MathConstants<FloatType>::pi }, halfPi { MathConstants<FloatType>::halfPi }, twoPi { MathConstants<FloatType>::twoPi };
-        DynamicAtan(String eID, ParamList refs, FloatParamList floatRefs, int eIDX, TableManager&) :
-        DeviantEffect(eID, refs, floatRefs, eIDX) {}
-        template<typename F> DynamicAtan(DynamicAtan<F>& other) : DeviantEffect(other) {}
-        
-        static inline FloatType processAtanSample(FloatType sample, const Coeffs& p) {
-            return ((fastatan(sample * (one + p(drive) * FloatType(14))) / p(attenuation)) * p(blend)) + sample * (one - p(blend)); }
-//        static constexpr Coeffs returnDefaultParams() const {
-//            const auto lDrive { static_cast<FloatType>(params[drive].get().get()) };
-//            NormalisableRange<FloatType> range { 0.1, 6.0, 0.0, 0.2 }, range2 { 0.7f, 2.0, 0., 1.4 };
-//            const auto lAttenuation { range2.convertFrom0to1(drive) };
-//            const auto lBlend { static_cast<FloatType>(getBlend()) };
-//            Coeffs c{};
-//            c[drive] = zero; c[attenuation] = FloatType(0.7); c[blend] = lBlend;
-//            return c;
-//        }
-        Coeffs returnParams() const {
-            const auto lDrive { static_cast<FloatType>(params[drive].get().get()) };
-            NormalisableRange<FloatType> range { 0.1, 6.0, 0.0, 0.2 }, range2 { 0.7f, 2.0, 0., 1.4 };
-            const auto lAttenuation { range2.convertFrom0to1(drive) };
-            const auto lBlend { static_cast<FloatType>(getBlend()) };
-            Coeffs c{};
-            c[drive] = lDrive; c[attenuation] = lAttenuation; c[blend] = lBlend;
-            return c;
-        }
-                    static inline FloatType fastatan( FloatType x )  { return (two/pi) * atan(x * pi/two); }
-        
-        void processSamples(AudioBuffer<FloatType>& buffer) override {
-            const auto p { returnParams() };
-            
-            for (int channel { 0 }; channel < buffer.getNumChannels(); ++channel) {
-                FloatType* channelData { buffer.getWritePointer (channel) };
-                for (int sample { 0 }; sample < buffer.getNumSamples(); sample++, channelData++)
-                    *channelData = processAtanSample(*channelData, p);
-            }
-        }
-    };
-    
-    template<typename FloatType>
+    template<typename F>
     struct BitCrusher : public DeviantEffect {
-        static constexpr int waveLength { WAVELENGTH };
-        static constexpr FloatType zero { static_cast<FloatType>(0) }, one { static_cast<FloatType>(1) }, two { static_cast<FloatType>(2) }, half { one / two }, quarter { half / two };
-
-        BitCrusher(String eID, ParamList refs, FloatParamList floatRefs, int eIDX, TableManager&) :
-        DeviantEffect(eID, refs, floatRefs, eIDX) {}
-        template<typename F> BitCrusher(BitCrusher<F>& other) : DeviantEffect(other) {}
-
-        FloatType rround(FloatType f) { return f > zero ? floor(f + half) : ceil(f - half); }
-
-        void processSamples(AudioBuffer<FloatType>& buffer) {
-            enum { driveIndex, floorIndex };
-            const int channels { buffer.getNumChannels() }, samples { buffer.getNumSamples() };
-            auto drive { params[driveIndex].get().get() };
-            auto floor { params[floorIndex].get().get() };
-
-            const FloatType mapped_crush_floor { floor * FloatType(31) + one };
-            const FloatType crush_floor { FloatType(32) - static_cast<int>(mapped_crush_floor) + one };
+        BitCrusher(String eID, ParamList refs, FloatParamList floatRefs, int eIDX, TableManager& m, std::atomic<int>& cI, float(& cS)[maxCoeffs][maxCoeffs]) :
+        DeviantEffect(eID, refs, floatRefs, eIDX, m), coeffIdx(cI), coeffArray(cS) {}
+        template<typename OtherFloatType> BitCrusher(BitCrusher<OtherFloatType>& other) : DeviantEffect(other), coeffIdx(other.coeffIdx), coeffArray(other.coeffArray) {}
+        void processSamples(AudioBuffer<float>& buffer) override { processSamples<float>(buffer); }
+        void processSamples(AudioBuffer<double>& buffer) override { processSamples<double>(buffer); }
+        void calculateCoefficients() override {
+            auto& [drive, floor, max, noName3, noName4, noName5, attenuation, blend] = coeffs;
+            const F mapped_crush_floor { floor * F(31) + 1.f };
+            const F crush_floor { F(32) - static_cast<int>(mapped_crush_floor) + 1.f };
             
-            const FloatType mapped_input { drive * (crush_floor - one) + one };
+            const F mapped_input { drive * (crush_floor - 1.f) + 1.f };
             const int bitDepth { static_cast<int>(crush_floor - mapped_input) + 1 };
             int i { 4 };
             for (; i <= bitDepth; i *= 2) ;
-            const auto max { static_cast<FloatType>(i - 1) };
-            auto mag { buffer.getMagnitude(0, buffer.getNumSamples()) };
-            if (mag == zero) mag = one;
-            const auto blend { getBlend() };
-            
-            for (int channel { 0 }; channel < channels; ++channel) {
-                FloatType* channelData { buffer.getWritePointer (channel) };
-                for (int sample { 0 }; sample < samples; sample++, channelData++) {
-                    jassert(!isnan(*channelData));
-                    *channelData = blend * (rround((*channelData / mag + one) * max) / max - one) * mag + (one - blend) * *channelData;
+            //            const auto max { static_cast<F>(i - 1) };
+            max = powf(floor - 1.f, 4.f) * 1024.f + 1.f;
+            attenuation = 1.f;
+            int currentIndex { coeffIdx };
+            float* newCoeffSet { coeffArray[++currentIndex%=maxCoeffs] };
+            for (int k { 0 }; k < maxCoeffs; ++k) newCoeffSet[k] = coeffs[k];
+            coeffIdx = currentIndex;
+        }
+        template<typename FloatType> void processSamples(AudioBuffer<FloatType>& buffer) {
+            if constexpr (std::is_same<F, FloatType>::value) {
+                const int channels { buffer.getNumChannels() }, samples { buffer.getNumSamples() };
+                for (int j { 0 }; j < channels; ++j) {
+                    auto* channelData { buffer.getWritePointer(j) };
+                    for (int i { 0 }; i < samples; ++i, ++channelData) {
+                        jassert(!isnan(*channelData));
+                        *channelData = crushSample(*channelData, coeffs);
+                        jassert(!isnan(*channelData));
+                    }
                 }
             }
         }
+        std::atomic<int>& coeffIdx;
+        float(& coeffArray)[maxCoeffs][maxCoeffs];
     };
     
-    template<typename FloatType>
+    template<typename F>
     struct DynamicBitCrusher : public DeviantEffect {
-        using Coeffs = CalculatedParamCoefficients<FloatType>;
-        enum { drive = 0, floorParam, max, attenuation = 6, blend = 7 };
-        static constexpr int waveLength { WAVELENGTH };
-        static constexpr FloatType zero { static_cast<FloatType>(0) }, one { static_cast<FloatType>(1) }, two { static_cast<FloatType>(2) }, half { one / two }, quarter { half / two };
-        
-        DynamicBitCrusher(String eID, ParamList refs, FloatParamList floatRefs, int eIDX, TableManager&) :
-        DeviantEffect(eID, refs, floatRefs, eIDX) {}
-        template<typename F> DynamicBitCrusher(DynamicBitCrusher<F>& other) : DeviantEffect(other) {}
-        
-        Coeffs returnParams() {
-            auto lDrive { params[drive].get().get() };
-            auto lFloor { static_cast<FloatType>(params[floorParam].get().get()) };
-            const FloatType mapped_crush_floor { lFloor * FloatType(31) + one };
-            const FloatType crush_floor { FloatType(32 - static_cast<int>(mapped_crush_floor)) + one };
-            
-            const FloatType mapped_input { drive * (crush_floor - one) + one };
-            const int bitDepth { static_cast<int>(crush_floor - mapped_input) + 1 };
-            int i { 4 };
-            for (; i <= bitDepth; i *= 2) ;
-//            const auto max { static_cast<FloatType>(i - 1) };
-            const auto lMax { static_cast<FloatType>(pow(lFloor - one, 4.)) * 1024 + 1 };
-            const auto lAttenuation { one };
-            const auto lBlend { getBlend() };
-            Coeffs c{};
-            c[drive] = lDrive; c[floorParam] = lFloor; c[max] = lMax; c[attenuation] = lAttenuation; c[blend] = lBlend;
-            return c;
-        }
-        static inline FloatType rround(FloatType f) { return f > zero ? floor(f + half) : ceil(f - half); }
-        static inline FloatType crushSample(FloatType sample, const Coeffs& p) {
-            return p(blend) * (rround((sample + one) * p(max)) / p(max) - one) + (one - p(blend)) * sample; }
-
-        void processSamples(AudioBuffer<FloatType>& buffer) {
-            const auto p { returnParams() };
-            const int channels { buffer.getNumChannels() }, samples { buffer.getNumSamples() };
-            for (int j { 0 }; j < channels; ++j) {
-                auto* channelData { buffer.getWritePointer(j) };
-                for (int i { 0 }; i < samples; ++i, ++channelData)
-                    *channelData = crushSample(*channelData, p);
+        DynamicBitCrusher(String eID, ParamList refs, FloatParamList floatRefs, int eIDX, TableManager& m, std::atomic<int>& cI, float(& cS)[maxCoeffs][maxCoeffs]) :
+        DeviantEffect(eID, refs, floatRefs, eIDX, m), coeffIdx(cI), coeffArray(cS) {}
+        template<typename OtherFloatType> DynamicBitCrusher(DynamicBitCrusher<OtherFloatType>& other) : DeviantEffect(other), coeffIdx(other.coeffIdx), coeffArray(other.coeffArray) {}
+        void processSamples(AudioBuffer<float>& buffer) override { processSamples<float>(buffer); }
+        void processSamples(AudioBuffer<double>& buffer) override { processSamples<double>(buffer); }
+        template<typename FloatType> void processSamples(AudioBuffer<FloatType>& buffer) {
+            if constexpr (std::is_same<F, FloatType>::value) {
+                const int channels { buffer.getNumChannels() }, samples { buffer.getNumSamples() };
+                for (int channel { 0 }; channel < channels; ++channel) {
+                    F* channelData { buffer.getWritePointer (channel) };
+                    for (int sample { 0 }; sample < samples; sample++, channelData++) {
+                        jassert(!isnan(*channelData));
+                        *channelData = crushSample(*channelData, coeffs);
+                        jassert(!isnan(*channelData));
+                    }
+                }
             }
         }
+        void calculateCoefficients() override {
+            auto& [drive, floor, max, noName3, noName4, noName5, attenuation, blend] = coeffs;
+            max = powf(floor - 1.f, 4.f) * 1024.f + 1.f;
+            attenuation = 1.f - 0.5f * drive * floor;
+            int currentIndex { coeffIdx };
+            float* newCoeffSet { coeffArray[++currentIndex%=maxCoeffs] };
+            for (int i { 0 }; i < maxCoeffs; ++i) newCoeffSet[i] = coeffs[i];
+            coeffIdx = currentIndex;
+        }
+        std::atomic<int>& coeffIdx;
+        float(& coeffArray)[maxCoeffs][maxCoeffs];
     };
     
-    template<typename FloatType>
+    template<typename F>
     struct Deviation : public DeviantEffect {
-        enum { driveIndex, gateIndex, saturationIndex };
-        static constexpr int waveLength { WAVELENGTH };
-        static constexpr FloatType zero { static_cast<FloatType>(0) }, one { static_cast<FloatType>(1) }, two { static_cast<FloatType>(2) }, half { one / two }, quarter { half / two }, pi { MathConstants<FloatType>::pi }, halfPi { MathConstants<FloatType>::halfPi }, twoPi { MathConstants<FloatType>::twoPi };
-        Deviation(String eID, ParamList refs, FloatParamList floatRefs, int eIDX, TableManager&) :
-        DeviantEffect(eID, refs, floatRefs, eIDX) {}
-        template<typename F> Deviation(Deviation<F>& other) : DeviantEffect(other) {}
-        
-        void reset() override {}
-        void prepare(const ProcessSpec&) override {}
-        void processSamples(AudioBuffer<FloatType>& buffer) override {
-            auto driveRange { params[driveIndex].get().getNormalisableRange() };
-            auto saturationRange { params[saturationIndex].get().getNormalisableRange() };
-            
-            const float driveNormal { driveRange.convertTo0to1(params[driveIndex].get()) / 8.f };
-            const float saturationNormal { saturationRange.convertTo0to1(params[saturationIndex].get()) };
+        Deviation(String eID, ParamList refs, FloatParamList floatRefs, int eIDX, TableManager& m, std::atomic<int>& cI, float(& cS)[maxCoeffs][maxCoeffs]) :
+        DeviantEffect(eID, refs, floatRefs, eIDX, m), coeffIdx(cI), coeffArray(cS) {}
+        template<typename OtherFloatType> Deviation(Deviation<OtherFloatType>& other) : DeviantEffect(other), coeffIdx(other.coeffIdx), coeffArray(other.coeffArray) {}
+        void processSamples(AudioBuffer<float>& buffer) override { processSamples<float>(buffer); }
+        void processSamples(AudioBuffer<double>& buffer) override { processSamples<double>(buffer); }
+        void calculateCoefficients() override {
+            auto& [drive, gate, saturation, gateOffset, noName4, noName5, attenuation, blend] = coeffs;
+            auto driveRange { params[0].get().getNormalisableRange() };
+            auto saturationRange { params[2].get().getNormalisableRange() };
+            const float driveNormal { driveRange.convertTo0to1(drive) / 8.f };
+            const float saturationNormal { saturationRange.convertTo0to1(saturation) };
             const float driveFactor { powf(0.1f,powf(driveNormal,0.1f)) };
             const float saturationFactor { powf(0.15f,powf(saturationNormal,0.2f)) };
-            const auto attenuationFactor { static_cast<FloatType>(powf(driveFactor,powf(saturationFactor,0.4f)) * powf(saturationFactor,powf(driveFactor,0.4f))) };
-            
-            const auto drive { static_cast<FloatType>(params[driveIndex].get()) };
-            const auto gate { static_cast<FloatType>(params[gateIndex].get()) };
-            const auto saturation { static_cast<FloatType>(params[saturationIndex].get()) };
-            const auto blend { static_cast<FloatType>(getBlend()) };
-            
-            const auto gateOffset { (((gate + one) / two) - one) / ((gate + one) / two) };
-            
-            for (int channel { 0 }; channel < buffer.getNumChannels(); ++channel) {
-                FloatType* channelData { buffer.getWritePointer (channel) };
-                for (int sample { 0 }; sample < buffer.getNumSamples(); sample++, channelData++) {
-                    *channelData = static_cast<FloatType>((-one - gateOffset + (two/(one + (one / gate) * pow(exp(-saturation * *channelData),(drive))))) * attenuationFactor) * blend + *channelData * (one - blend);
-                    jassert(!isnan(*channelData));
+            attenuation = powf(driveFactor,powf(saturationFactor,0.4f)) * powf(saturationFactor,powf(driveFactor,0.4f));
+            gateOffset = (((gate + 1.f) / 2.f) - 1.f) / ((gate + 1.f) / 2.f);
+            int currentIndex { coeffIdx };
+            float(& newCoeffSet)[maxCoeffs] { coeffArray[++currentIndex%=maxCoeffs] };
+            for (int i { 0 }; i < maxCoeffs; ++i)
+                newCoeffSet[i] = coeffs[i];
+            coeffIdx = currentIndex;
+        }
+        template<typename FloatType> void processSamples(AudioBuffer<FloatType>& buffer) {
+            if constexpr (std::is_same<F, FloatType>::value) {
+                for (int channel { 0 }; channel < buffer.getNumChannels(); ++channel) {
+                    F* channelData { buffer.getWritePointer (channel) };
+                    for (int sample { 0 }; sample < buffer.getNumSamples(); sample++, channelData++) {
+                        jassert(!isnan(*channelData));
+                        *channelData = deviateSample(*channelData, coeffs);
+                        jassert(!isnan(*channelData));
+                    }
                 }
             }
         }
+        std::atomic<int>& coeffIdx;
+        float(& coeffArray)[maxCoeffs][maxCoeffs];
     };
     
-    template<typename FloatType>
-    struct DynamicDeviation : public DeviantEffect {
-        using Coeffs = CalculatedParamCoefficients<FloatType>;
-        enum { drive = 0, gate, saturation, gateOffset, attenuation = 6, blend = 7 };
-        static constexpr int waveLength { WAVELENGTH };
-        static constexpr FloatType zero { static_cast<FloatType>(0) }, one { static_cast<FloatType>(1) }, two { static_cast<FloatType>(2) }, half { one / two }, quarter { half / two }, pi { MathConstants<FloatType>::pi }, halfPi { MathConstants<FloatType>::halfPi }, twoPi { MathConstants<FloatType>::twoPi };
-        
-        DynamicDeviation(String eID, ParamList refs, FloatParamList floatRefs, int eIDX, TableManager&) :
-        DeviantEffect(eID, refs, floatRefs, eIDX) {}
-        template<typename F> DynamicDeviation(DynamicDeviation<F>& other) : DeviantEffect(other) {}
-        
-        static inline FloatType processSample(FloatType sample, const Coeffs& p) {
-            return (-one - p[gateOffset] + (two/(one + (one / p[gate]) * pow(exp(-p[saturation] * sample),(p[drive]))))) * p[attenuation] * p[blend] + sample * (one - p[blend]); }
-        
-        void reset() override {}
-        void prepare(const ProcessSpec&) override {}
-        Coeffs returnParams() {
-            auto driveRange { params[drive].get().getNormalisableRange() };
-            auto saturationRange { params[saturation].get().getNormalisableRange() };
-            
-            const float driveNormal { driveRange.convertTo0to1(params[drive].get()) / 8.f };
-            const float saturationNormal { saturationRange.convertTo0to1(params[saturation].get()) };
-            const float driveFactor { powf(0.1f,powf(driveNormal,0.1f)) };
-            const float saturationFactor { powf(0.15f,powf(saturationNormal,0.2f)) };
-            const auto lAttenuation { static_cast<FloatType>(powf(driveFactor,powf(saturationFactor,0.4f)) * powf(saturationFactor,powf(driveFactor,0.4f))) };
-            
-            const auto lDrive { static_cast<FloatType>(params[drive].get()) };
-            const auto lGate { static_cast<FloatType>(params[gate].get()) };
-            const auto lSaturation { static_cast<FloatType>(params[saturation].get()) };
-            const auto lBlend { static_cast<FloatType>(getBlend()) };
-            
-            const auto lGateOffset { (((gate + one) / two) - one) / ((gate + one) / two) };
-            Coeffs c{};
-            c[drive] = lDrive; c[gate] = lGate; c[saturation] = lSaturation; c[gateOffset] = lGateOffset; c[attenuation] = lAttenuation; c[blend] = lBlend;
-            return c;
-        }
-        static inline FloatType deviateSample(FloatType sample, const Coeffs& p) {
-            return (-one - p(gateOffset) + (two/(one + (one / p(gate)) * pow(exp(-p(saturation) * sample),(p(drive)))))) * p(attenuation) * p(blend) + sample * (one - p(blend));
-        }
-        void processSamples(AudioBuffer<FloatType>& buffer) override {
-            const auto p { returnParams() };
-            
-            for (int channel { 0 }; channel < buffer.getNumChannels(); ++channel) {
-                FloatType* channelData { buffer.getWritePointer (channel) };
-                for (int sample { 0 }; sample < buffer.getNumSamples(); sample++, channelData++) {
-                    deviateSample(*channelData, p);// = static_cast<FloatType>((-one - gateOffset + (two/(one + (one / gate) * pow(exp(-saturation * *channelData),(drive))))) * attenuationFactor) * blend + *channelData * (one - blend);
-                    jassert(!isnan(*channelData));
-                }
-            }
-        }
-    };
-    
-    template<typename FloatType>
+    template<typename F>
     struct SadisticFilter : public DeviantEffect {
-        enum { lowIndex, highIndex };
-        SadisticFilter(String eID, ParamList refs, FloatParamList floatRefs, int eIDX, TableManager&) :
-        DeviantEffect(eID, refs, floatRefs, eIDX) {}
-        template<typename F> SadisticFilter(SadisticFilter<F>& other) : DeviantEffect(other) {}
-        
+        SadisticFilter(String eID, ParamList refs, FloatParamList floatRefs, int eIDX, TableManager& m) : DeviantEffect(eID, refs, floatRefs, eIDX, m) {}
+        template<typename OtherFloatType> SadisticFilter(SadisticFilter<OtherFloatType>& other) : DeviantEffect(other) {}
         void reset() override { filter.reset(); }
+        int getLatency() override { return static_cast<int>(filter.state->getFilterOrder()/2); }
         void prepare(const ProcessSpec& spec) override {
-            lastLow = params[lowIndex].get();
-            lastHigh = params[highIndex].get();
-            if(spec.sampleRate != 0.0) lastSampleRate = spec.sampleRate;
-            update(lastSampleRate, lastLow, lastHigh);
+            if(spec.sampleRate != 0.0) lastSampleRate = jlimit(44100.0, 192000.0, spec.sampleRate);
             filter.prepare({ lastSampleRate, spec.maximumBlockSize, spec.numChannels }); }
-        void process(AudioBuffer<FloatType>& buffer) override {
-            if (isEnabled()) {
-                if(params[lowIndex].get() != lastLow || params[highIndex].get() != lastHigh) {
-                    lastLow = jlimit(lastLow/maxDelta, lastLow*maxDelta, params[lowIndex].get().get());
-                    lastHigh = jlimit(lastHigh/maxDelta, lastHigh*maxDelta, params[highIndex].get().get());
-                    update(lastSampleRate, lastLow, lastHigh);
-                }
-                AudioBlock<FloatType> block { buffer };
-                filter.process(ProcessContextReplacing<FloatType>(block));
+        void processSamples(AudioBuffer<float>& buffer) override { processSamples<float>(buffer); }
+        void processSamples(AudioBuffer<double>& buffer) override { processSamples<double>(buffer); }
+        template<typename FloatType> void processSamples(AudioBuffer<FloatType>& buffer) {
+            if constexpr (std::is_same<F, FloatType>::value) {
+                AudioBlock<F> block { buffer };
+                filter.process(ProcessContextReplacing<F>(block));
             }
         }
-        void update(double sampleRate, float lowFrequency, float highFrequency, size_t order = 32, typename WindowingFunction<FloatType>::WindowingMethod type = WindowingFunction<FloatType>::kaiser, FloatType beta = 4.0){
-            
-            *filter.state = *makeBandpass<FloatType>(lowFrequency, highFrequency, sampleRate, order, type, beta);
-        }
-        int getLatency() override { return static_cast<int>(filter.state->getFilterOrder()/2); }
+        void calculateCoefficients() override {
+            auto& [low, high, saturation, gateOffset, noName4, noName5, attenuation, blend] = coeffs;
+            update(lastSampleRate, low, high); }
+        void update(double sR, F lo, F hi){
+            *filter.state = *makeBandpass<F>(lo, hi, sR, 32, WindowingFunction<F>::kaiser, F(4)); }
         double lastSampleRate { 44100.0 };
-        float lastLow { 20.f }, lastHigh { 20000.f }, maxDelta { 1.1f };
-        ProcessorDuplicator<FIR::Filter<FloatType>, FIR::Coefficients<FloatType>> filter;
+        ProcessorDuplicator<FIR::Filter<F>, FIR::Coefficients<F>> filter;
     };
-    
 }

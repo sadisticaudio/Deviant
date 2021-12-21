@@ -1,7 +1,7 @@
 #pragma once
 #include "Members.h"
 namespace sadistic {
-    class Deviant  :  public AudioProcessor, public APVTS::Listener {
+    class Deviant  :  public AudioProcessor {
     public:
         
         Deviant(APVTS::ParameterLayout);
@@ -14,6 +14,8 @@ namespace sadistic {
         bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
         void processBlock (AudioBuffer<float>&, MidiBuffer&) override;
         void processBlock (AudioBuffer<double>&, MidiBuffer&) override;
+        void processBlockBypassed (AudioBuffer<float>& b, MidiBuffer&) override;
+        void processBlockBypassed (AudioBuffer<double>& b, MidiBuffer&) override;
         bool supportsDoublePrecisionProcessing() const override { return true; }
         const String getName() const override { return "ddd"; }//JucePlugin_Name; }
         bool acceptsMidi() const override { return false; }
@@ -26,11 +28,13 @@ namespace sadistic {
         const String getProgramName (int) override { return {}; }
         void changeProgramName (int, const String&) override {}
         AudioProcessorEditor* createEditor() override;
+        bool hasEditor() const override { return true; }
         APVTS& getAPVTS() { return apvts; }
         TableManager& getTableManager() { return mgmt; }
-        bool hasEditor() const override { return true; }
         void setCurrentScreen(int s) { apvts.state.setProperty("currentScreen", s, &undoManager); }
         int getCurrentScreen() { return apvts.state.getProperty("currentScreen", 1); }
+        UndoManager* getUndoManager() { return &undoManager; }
+        LongFifo<float>* getOscilloscopeFifo() { return oscilloscopeFifo; }
 
         void getStateInformation (MemoryBlock& destinationBlockForAPVTS) override {
             MemoryOutputStream stream(destinationBlockForAPVTS, false);
@@ -38,129 +42,26 @@ namespace sadistic {
         void setStateInformation (const void* dataFromHost, int size) override {
             auto treeCreatedFromData { ValueTree::readFromData (dataFromHost, static_cast<size_t>(size)) };
             if (treeCreatedFromData.isValid()) apvts.state = treeCreatedFromData; }
-        
-        template<typename FloatType> void setGainTable(DeviantMembers<FloatType>& m) {
-            FloatType arr[WAVELENGTH + 1];
-            for (int i { 0 }; i < WAVELENGTH + 1; ++i) arr[i] = FloatType(-1) + FloatType(2 * i) / FloatType(WAVELENGTH);
-            FloatType* mockChannel[1] = { arr };
-            AudioBuffer<FloatType> buf { mockChannel, 1, WAVELENGTH + 1 };
-            m.dynamicAtan.processSamples(buf);
-            m.dynamicDeviation.processSamples(buf);
-            m.dynamicBitCrusher.processSamples(buf);
-            FloatType rms { Wave<FloatType>::getRMS(arr, WAVELENGTH) }, mult { rms > FloatType(0.01) ? MathConstants<FloatType>::sqrt2/FloatType(2)/rms : FloatType(1) };
-            mult = jmin(FloatType(1), mult);
-            for (int i { 0 }; i < WAVELENGTH; ++i) arr[i] *= mult;
-            mgmt.setTable("gainTable", arr, WAVELENGTH + 1);
-        }
-        
-        template<typename FloatType> void setWaveTable(DeviantMembers<FloatType>& m) {
-            FloatType arr[WAVELENGTH + 1];
-            for (int i { 0 }; i < WAVELENGTH + 1; ++i) arr[i] = FloatType(-1) + FloatType(2 * i) / FloatType(WAVELENGTH);
-            FloatType* mockChannel[1] = { arr };
-            AudioBuffer<FloatType> buf { mockChannel, 1, WAVELENGTH + 1 };
-            m.staticAtan.processSamples(buf);
-            m.staticBitCrusher.processSamples(buf);
-            m.staticDeviation.processSamples(buf);
-            FloatType rms { Wave<FloatType>::getRMS(arr, WAVELENGTH) }, mult { rms > FloatType(0.01) ? MathConstants<FloatType>::sqrt2/FloatType(2)/rms : FloatType(1) };
-            mult = jmin(FloatType(1), mult);
-            for (int i { 0 }; i < WAVELENGTH; ++i) arr[i] *= mult;
-            mgmt.setTable("waveTable", arr, WAVELENGTH + 1);
-        }
-        
-        void setGainTable() { if(getProcessingPrecision() == doublePrecision) setGainTable(membersD); else setGainTable(membersF); }
-        void setWaveTable() { if(getProcessingPrecision() == doublePrecision) setWaveTable(membersD); else setWaveTable(membersF); }
-        
-        void parameterChanged (const String& parameterID, float) override {
-            if (parameterID.contains("Index") || parameterID.contains("Route")) needsResorting = true;
-            else if (parameterID.contains("static")) setWaveTable();
-            else setGainTable();
-        }
-        
-        template<typename FloatType> void release(DeviantMembers<FloatType>& m) { m.reset(); m.oversampler.reset(); }
+
+        template<typename FloatType> void release(DeviantMembers<FloatType>& m) { m.reset(); }
         template<typename FloatType> void prepare(double sampleRate, int samplesPerBlock, DeviantMembers<FloatType>& m) {
-            auto channels { jmin((uint32) getMainBusNumInputChannels(), (uint32) 2, (uint32) getMainBusNumOutputChannels()) };
-            dsp::ProcessSpec spec { sampleRate, (uint32) samplesPerBlock, channels };
+            auto channels { jmin(getMainBusNumInputChannels(), 2, getMainBusNumOutputChannels()) };
+            dsp::ProcessSpec spec { sampleRate, (uint32) samplesPerBlock, (uint32) channels };
             m.prepare(spec);
-            const auto latency { static_cast<int>(m.lpf.state->getFilterOrder()/2) + /* m.lpf2.state->getFilterOrder()/2) + */
-                m.filterA.getLatency() + m.filterB.getLatency() + m.dynamicWaveShaper.getLatency() };
-            setLatencySamples(latency);
-            m.dynamicWaveShaper.setParams(m.dynamicAtan.returnParams(), m.dynamicBitCrusher.returnParams(), m.dynamicDeviation.returnParams());
-            m.blendDelay1.setDelay(latency);
-            m.spectralInversionDelay1.setDelay(static_cast<int>(m.lpf.state->getFilterOrder()/2));
-            m.spectralInversionDelay2.setDelay(m.dynamicWaveShaper.getLatency() + m.filterA.getLatency() + m.filterB.getLatency() /* + static_cast<int>(m.lpf2.state->getFilterOrder()/2) */);
-            m.oversampler.initProcessing(size_t(samplesPerBlock));
+            const auto latency { m.filterA.getLatency() + m.filterB.getLatency() + m.dynamicWaveShaper.getLatency() };
+            setLatencySamples(latency + BUFFERLENGTH);
+            m.blendDelay.setDelay(latency);
+            m.spectralInversionDelay1.setDelay(m.filterA.getLatency());
+            m.spectralInversionDelay2.setDelay(m.dynamicWaveShaper.getLatency() + m.filterB.getLatency());
+
         }
         
-        template<typename FloatType> void processTheDamnBlock(AudioBuffer<FloatType>& buffer, DeviantMembers<FloatType>& m) {
+        template<typename FloatType> void processTheDamnBlock(AudioBuffer<FloatType>& buffer, DeviantMembers<FloatType>& m, bool bypassed = false) {
             const int numIns { getMainBusNumInputChannels() }, numOuts { getMainBusNumOutputChannels() }, channels { jmin(numIns, numOuts, 2) }, samples { buffer.getNumSamples() };
             ScopedNoDenormals noDenormals;
-            const auto blend { static_cast<FloatType>(static_cast<AudioParameterFloat&>(m.params[0].get()).get()/FloatType(100)) };
             AudioBuffer<FloatType> mainBuffer { buffer.getArrayOfWritePointers(), channels, samples };
-            
-            //create references to our member buffers
-            auto& blendBuffer { m.blendBuffer }, & spectralInversionBuffer { m.spectralInversionBuffer };
-            
-            //copy what's in our buffer to our blend buffer, delaying the blendBuffer by the total latency
-            //and the spectralInversionBuffer by the latency of the pre-filtering
-            //the delays will resize our buffers to the current buffer length
-            //and retain samples needed in subsequent processBlock calls
-            m.blendDelay1.process(mainBuffer, blendBuffer);
-            m.spectralInversionDelay1.process(mainBuffer, spectralInversionBuffer);
-
-            AudioBlock<FloatType> block { mainBuffer }, spectralInversionBlock { spectralInversionBuffer }, blendBlock { blendBuffer };
-//            m.lpf.process(ProcessContextReplacing<FloatType>(block));
-            
-            //subtract out the filtered signal from the spectralInversionBlock
-            spectralInversionBlock -= block;
-            
-            //shape the wave
-//            auto upBlock { m.oversampler.processSamplesUp(block) };
-            
-//            AudioBuffer<FloatType> upBuffer { upBlock.channels, buffer.getNumChannels(), buffer.getNumSamples() };
-            const auto atanCoeffs = m.dynamicAtan.returnParams(), bitCrusherCoeffs = m.dynamicBitCrusher.returnParams(), deviationCoeffs = m.dynamicDeviation.returnParams();
-            m.dynamicWaveShaper.passParams(atanCoeffs, bitCrusherCoeffs, deviationCoeffs);
-            m.dynamicWaveShaper.processSamples(mainBuffer);
-            
-//            m.oversampler.processSamplesDown(block);
-//
-//            for (int j { 0 }; j < buffer.getNumChannels(); ++j)
-//                m.interpolator[j].process(FloatType(1) / FloatType(m.dFactor), upBlock.getChannelPointer(j), block.getChannelPointer(j), m.bufferLength);
-            
-            m.filterA.process(mainBuffer);
-//            m.staticWaveShaper.process(spectralInversionBuffer);
-            m.filterB.process(mainBuffer);
-            m.staticAtan.process(spectralInversionBuffer);
-            m.staticDeviation.process(spectralInversionBuffer);
-            m.staticBitCrusher.process(spectralInversionBuffer);
-
-            //delay the spectralInversionBuffer the rest of the way
-            m.spectralInversionDelay2.process(spectralInversionBuffer);
-//
-//            m.sort();
-//
-//            for (int i { 0 }; i < m.getFilterAIndex(); ++i) m.effects[i]->process(mainBuffer);
-//            spectralInversionBuffer.makeCopyOf(mainBuffer);
-//            m.effects[m.getFilterAIndex()]->process(mainBuffer);
-
-//            for (int i { m.getFilterAIndex() + 1 }; i < numFX; ++i) m.effects[i]->process(mainBuffer);
-            
-            //add back in the spectral inverse of the first filter(s), this part of the signal was not meant to be distorted
-            block += spectralInversionBlock;
-
-            //attenuate the signals according to the blend parameter
-            block *= blend;
-            blendBlock *= (FloatType(1) - blend);
-            
-            //push the dry and wet signals seperately to the oscilloscope
-            oscilloscopeFifo[drySignal].pushChannel<FloatType>(blendBuffer);
-            oscilloscopeFifo[wetSignal].pushChannel<FloatType>(mainBuffer);
-            
-            //output the sum of both signals
-            block += blendBlock;
+            m.processBlock(mainBuffer, oscilloscopeFifo, bypassed);
         }
-        
-        UndoManager* getUndoManager() { return &undoManager; }
-        LongFifo<float>* getOscilloscopeFifo() { return oscilloscopeFifo; }
         
     protected:
         BusesProperties getDefaultBusesProperties() {
@@ -169,15 +70,15 @@ namespace sadistic {
         }
         
     private:
-        enum { wetSignal = 0, drySignal = 1, numSignals };
-        TableManager mgmt;
+        std::atomic<int> cIdx[6] { 0,0,0,0,0,0 };
+        float coefficients[maxCoeffs][maxCoeffs][maxCoeffs];
         DeviantMembers<double> membersD;
         DeviantMembers<float> membersF;
+        TableManager mgmt;
         UndoManager undoManager;
         APVTS apvts;
         sadistic::SadisticMarketplaceStatus marketplaceStatus { "hieF" };
         LongFifo<float> oscilloscopeFifo[2]{};
-        std::atomic<bool> needsResorting { true };
         
         JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Deviant)
     };
