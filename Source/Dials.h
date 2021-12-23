@@ -3,101 +3,99 @@
 namespace sadistic {
     
     struct Dials : DeviantScreen {
-        struct SadImage : Component {
-            SadImage(const char* s, const int sS) : svg(s), svgSize(sS) { setInterceptsMouseClicks(false, true); }
-            void paint(Graphics&) override {
-                Path path;
-//                                path = pathFromBinarySVG(Data::SATURATE_svg, Data::SATURATE_svgSize);
-//                path.loadPathFromData(svg, size_t(svgSize));
-//                g.setColour(Colours::white.darker().darker());
-//                auto transform { path.getTransformToScaleToFit(getLocalBounds().toFloat(), true, Justification::centred).rotated(angle, getWidth()/2, getHeight()/2) };
-//                path.applyTransform(transform);
-//                g.fillPath(path);
-            }
-            void setRotation(float r) { angle = r; }
-            const char* svg;
-            const int svgSize;
-            float angle { 0.f };
-        };
-        
-        Dials(TableManager& t, int idx = 2) : DeviantScreen(t), button(makeLabel(getFxID(idx))), leftSVG(Data::SATURATE_svg, Data::SATURATE_svgSize), rightSVG(Data::SATURATE_svg, Data::SATURATE_svgSize) {
-            
-//            setLookAndFeel(&llaf);
-            
+        Dials(TableManager& t, int idx = 2) : DeviantScreen(t), button(makeLabel(getFxID(idx))), leftSVG(Data::DRIVE_svg, Colours::grey), rightSVG(Data::SATURATE_svg, Colours::grey) {
+
             button.label.set(makeLabel(getFxID(idx)), Colours::black, Colours::grey.darker());
             
-            leftKnob = std::make_unique<sadistic::EmpiricalSlider>(true);
-            rightKnob = std::make_unique<sadistic::EmpiricalSlider>();
-            blendKnob = std::make_unique<Slider>();
+            blendKnob.setScrollWheelEnabled(true);
+            blendKnob.setSliderStyle(Slider::SliderStyle::LinearHorizontal);
+            blendKnob.setDoubleClickReturnValue(true,1.0f,ModifierKeys::altModifier);
+            blendKnob.setMouseDragSensitivity (50);
+            blendKnob.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
+            blendKnob.setColour(Slider::thumbColourId, Colours::cadetblue);
+            blendKnob.setTextValueSuffix("%");
             
-            sadistic::setWidgets(*blendKnob, *leftKnob, llaf, *rightKnob, valueLabel, suffixLabel);
+            leftKnob.setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+            leftKnob.setRotaryParameters(0.0f, 5.81333f, true);
+            leftKnob.setDoubleClickReturnValue(true,1.0f,ModifierKeys::altModifier);
+            leftKnob.setMouseDragSensitivity (100);
+            leftKnob.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
+            leftKnob.setTextValueSuffix(" ;)");
             
-            leftKnob->onDragStart = [&,this]() {
-                showEmpiricalValue(*leftKnob, valueLabel, leftSVG);
-                leftSVG.setRotation(std::powf((float)leftKnob->getValue() / 200,2)); repaint(); };
-            leftKnob->onValueChange = [&,this]() {
-                showEmpiricalValue(*leftKnob, valueLabel, leftSVG);
-                leftSVG.setRotation(std::powf((float)leftKnob->getValue() / 200,2)); repaint(); };
-            leftKnob->onDragEnd = [&,this]() { hideValue(valueLabel, leftSVG);};
+            rightKnob.setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+            rightKnob.setRotaryParameters(degreesToRadians(180.f), degreesToRadians(513.f), true);
+            rightKnob.setDoubleClickReturnValue(true,1.0f,ModifierKeys::altModifier);
+            rightKnob.setMouseDragSensitivity (100);
+            rightKnob.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
+            rightKnob.setTextValueSuffix(" :)");
+            valueLabel.setJustificationType(Justification::centred);
             
-            rightKnob->onDragStart = [&,this]() {
-                showEmpiricalValue(*rightKnob, valueLabel, rightSVG);
-                rightSVG.setRotation((float)rightKnob->getValue() / 10.f - 0.2f); repaint(); };
-            rightKnob->onValueChange = [&,this]() {
-                showEmpiricalValue(*rightKnob, valueLabel, rightSVG);
-                rightSVG.setRotation((float)rightKnob->getValue() / 10.f - 0.2f); repaint(); };
-            rightKnob->onDragEnd = [&,this]() { hideValue(valueLabel, rightSVG);};
+            valueLabel.setColour(juce::Label::textColourId, Colours::lightgrey);
+            suffixLabel.setJustificationType(Justification::centred);
+            suffixLabel.setColour(juce::Label::textColourId, Colours::lightgrey);
             
-            blendKnob->onDragStart = [&,this]() { showIntegerValue(*blendKnob, valueLabel, suffixLabel);};
-            blendKnob->onValueChange = [&,this]() { showIntegerValue(*blendKnob, valueLabel, suffixLabel); };
-            blendKnob->onDragEnd = [&,this]() { hideValue(valueLabel, suffixLabel);};
+            leftKnob.onDragStart = [&,this]() {
+                showEmpiricalValue(leftKnob, valueLabel, leftSVG);
+                leftSVG.setRotation(leftKnob.getNormalisedValue() * MathConstants<float>::twoPi);
+                repaint(); };
+            leftKnob.onValueChange = [&,this]() {
+                showEmpiricalValue(leftKnob, valueLabel, leftSVG);
+                leftSVG.setRotation(leftKnob.getNormalisedValue() * MathConstants<float>::twoPi);
+                repaint(); };
+            leftKnob.onDragEnd = [&,this]() { hideValue(valueLabel, leftSVG);};
             
-            addAllAndMakeVisible(*this, *blendKnob, *rightKnob, *leftKnob, rightSVG, leftSVG, suffixLabel, valueLabel, button);
+            rightKnob.onDragStart = [&,this]() {
+                showEmpiricalValue(rightKnob, valueLabel, rightSVG);
+                rightSVG.setRotation(rightKnob.getNormalisedValue() * MathConstants<float>::twoPi);
+                repaint(); };
+            rightKnob.onValueChange = [&,this]() {
+                showEmpiricalValue(rightKnob, valueLabel, rightSVG);
+                rightSVG.setRotation(rightKnob.getNormalisedValue() * MathConstants<float>::twoPi);
+                repaint(); };
+            rightKnob.onDragEnd = [&,this]() { hideValue(valueLabel, rightSVG);};
             
-            leftAttachment = std::make_unique<APVTS::SliderAttachment>(mgmt.apvts, getParamID(idx, 0), *leftKnob);
+            blendKnob.onDragStart = [&,this]() { showIntegerValue(blendKnob, valueLabel, suffixLabel);};
+            blendKnob.onValueChange = [&,this]() { showIntegerValue(blendKnob, valueLabel, suffixLabel); };
+            blendKnob.onDragEnd = [&,this]() { hideValue(valueLabel, suffixLabel);};
+            
+            addAllAndMakeVisible(*this, blendKnob, rightKnob, leftKnob, rightSVG, leftSVG, suffixLabel, valueLabel, button);
+            
+            leftAttachment = std::make_unique<APVTS::SliderAttachment>(mgmt.apvts, getParamID(idx, 0), leftKnob);
             if (effectInfo[idx].numParams > 1)
-                rightAttachment = std::make_unique<APVTS::SliderAttachment>(mgmt.apvts, getParamID(idx, 1), *rightKnob);
-            blendAttachment = std::make_unique<APVTS::SliderAttachment>(mgmt.apvts, "mainBlend" /* getFxID(idx) + "Blend" */, *blendKnob);
-            
-            //            leftKnob->setNormalisableRange({ paramInfo[idx][0].min, paramInfo[idx][0].max, 0.0, paramInfo[idx][0].skew });
-            //            rightKnob->setNormalisableRange({ paramInfo[idx][1].min, paramInfo[idx][1].max, 0.0, paramInfo[idx][0].skew });
-            
+                rightAttachment = std::make_unique<APVTS::SliderAttachment>(mgmt.apvts, getParamID(idx, 1), rightKnob);
+            blendAttachment = std::make_unique<APVTS::SliderAttachment>(mgmt.apvts, "mainBlend" /* getFxID(idx) + "Blend" */, blendKnob);
+
             hideValue(valueLabel, suffixLabel);
             leftSVG.setVisible(false);
             rightSVG.setVisible(false);
-            
-            rightKnob->setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
-            leftKnob->setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
         }
-        
-        //        void paint(Graphics&) override {}
-        
+
         void resized() override {
             const auto bounds { getBounds() };
-            leftKnob->setMouseDragSensitivity(static_cast<int>((double)bounds.getHeight() * 0.98));
-            rightKnob->setMouseDragSensitivity(static_cast<int>((double)bounds.getHeight() * 0.98));
+            leftKnob.setMouseDragSensitivity(static_cast<int>((double)bounds.getHeight() * 0.98));
+            rightKnob.setMouseDragSensitivity(static_cast<int>((double)bounds.getHeight() * 0.98));
             
             auto h { getHeight() }, w { getWidth() }, diameter { jmax(5 * w / 8, 5 * h / 4) };
             
-            leftKnob->setSize(diameter, diameter);
-            rightKnob->setSize(diameter, diameter);
-            leftKnob->setTopRightPosition(getWidth()/2 - 50, h/2 - diameter/2);
-            rightKnob->setTopLeftPosition(w/2 + 50, h/2 - diameter/2);
-            Rectangle<int> r { bounds.getX(), bounds.getY(), (leftKnob->getRight() - 40) - bounds.getX(), h };
+            leftKnob.setSize(diameter, diameter);
+            rightKnob.setSize(diameter, diameter);
+            leftKnob.setTopRightPosition(getWidth()/2 - 50, h/2 - diameter/2);
+            rightKnob.setTopLeftPosition(w/2 + 50, h/2 - diameter/2);
+            Rectangle<int> r { bounds.getX(), bounds.getY(), (leftKnob.getRight() - 40) - bounds.getX(), h };
             r.reduce(0, jmax(r.getHeight()/6, r.getWidth()/6));
             valueLabel.setBounds(r);
-            suffixLabel.setBounds(r.withX(rightKnob->getX() + 40));
-            leftSVG.setBounds(rightKnob->getBounds().reduced(leftKnob->getWidth()/6));
-            rightSVG.setBounds(rightKnob->getBounds().reduced(rightKnob->getWidth()/8));
-            auto blendBounds { Rectangle<int>(static_cast<int>((float)(rightKnob->getX() - leftKnob->getRight() + getWidth()/8) * (float)getHeight()/(float)leftKnob->getHeight()), 20) };
-            blendKnob->setSize(blendBounds.getWidth(), blendBounds.getHeight());
-            blendKnob->setCentrePosition(bounds.getCentre().x, blendBounds.getHeight()/2);
+            suffixLabel.setBounds(r.withX(rightKnob.getX() + 40));
+            leftSVG.setBounds(rightKnob.getBounds().reduced(leftKnob.getWidth()/6));
+            rightSVG.setBounds(rightKnob.getBounds().reduced(rightKnob.getWidth()/8));
+            auto blendBounds { Rectangle<int>(static_cast<int>((float)(rightKnob.getX() - leftKnob.getRight() + getWidth()/8) * (float)getHeight()/(float)leftKnob.getHeight()), 20) };
+            blendKnob.setSize(blendBounds.getWidth(), blendBounds.getHeight());
+            blendKnob.setCentrePosition(bounds.getCentre().x, blendBounds.getHeight()/2);
             
             valueLabel.setFont(getSadisticFont(jmin(valueLabel.getHeight() / 2, valueLabel.getWidth() / 2)));
             suffixLabel.setFont(getSadisticFont(jmin(suffixLabel.getHeight() / 2, suffixLabel.getWidth() / 2)));
             
-            rightKnob->setMouseDragSensitivity(bounds.getHeight() / 2);
-            leftKnob->setMouseDragSensitivity(bounds.getHeight() / 2);
+            rightKnob.setMouseDragSensitivity(bounds.getHeight() / 2);
+            leftKnob.setMouseDragSensitivity(bounds.getHeight() / 2);
             
             auto toggleWidth { 150 }, toggleHeight { 15 };
             button.setSize(toggleWidth, toggleHeight);
@@ -106,9 +104,10 @@ namespace sadistic {
         
         sadistic::EmpiricalLAF llaf;
         SadTextButton button;
-        SadImage leftSVG, rightSVG;
+        SadSVG leftSVG, rightSVG;
         sadistic::TransLabel valueLabel, suffixLabel;
-        std::unique_ptr<Slider> leftKnob, rightKnob, blendKnob;
+        EmpiricalSlider leftKnob, rightKnob;
+        Slider blendKnob;
         std::unique_ptr<APVTS::SliderAttachment> leftAttachment, rightAttachment, blendAttachment;
     };
     

@@ -2,7 +2,7 @@
 #include "PluginEditor.h"
 AudioProcessor* JUCE_CALLTYPE createPluginFilter() { return new sadistic::Deviant({}); }
 
-sadistic::Deviant::Deviant(AudioProcessorValueTreeState::ParameterLayout layout) : AudioProcessor (getDefaultBusesProperties()), membersD(layout, mgmt, cIdx, coefficients), membersF(membersD), mgmt(apvts, &undoManager, cIdx, coefficients, membersF.dynamicWaveShaper.pWave, membersD.dynamicWaveShaper.pWave, membersF.staticWaveShaper.wave, membersD.staticWaveShaper.wave), apvts(*this, &undoManager, "PARAMETERS", std::move(layout)) {
+sadistic::Deviant::Deviant(AudioProcessorValueTreeState::ParameterLayout layout) : AudioProcessor (getDefaultBusesProperties()), membersD(layout, mgmt, cIdx, coefficients), membersF(membersD), mgmt(apvts, cIdx, coefficients, membersF.dynamicWaveShaper.pWave, membersD.dynamicWaveShaper.pWave), apvts(*this, &undoManager, "PARAMETERS", std::move(layout)) {
     marketplaceStatus.load();
     membersF.init();
     membersD.init();

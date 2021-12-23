@@ -11,12 +11,10 @@ sadistic::DeviantEditor::DeviantEditor (Deviant& p) : AudioProcessorEditor (&p),
     activateScreen(guiIdx);
     renderer.addAndMakeVisible(toggleButtonLeft);
     renderer.addAndMakeVisible(toggleButtonRight);
-    toggleButtonLeft.onClick = [&] {
-        switchScreen(guiIdx == dials ? matrix : (guiIdx == staticPad || guiIdx == dynamicPad) ? dials : padMode == gain ? staticPad : dynamicPad); };
-    toggleButtonRight.onClick = [&] {
-        switchScreen(guiIdx == dials ? padMode == gain ? staticPad : dynamicPad : guiIdx == matrix ? dials : matrix); };
-    theMoreDials.button.onClick = [&] { switchScreen(dynamicPad); };
-    phaseDials.button.onClick = [&] { switchScreen(staticPad); };
+    toggleButtonLeft.onClick = [&] { switchScreen(guiIdx == dials ? matrix : (guiIdx == staticPad || guiIdx == dynamicPad) ? dials : padMode == gain ? staticPad : dynamicPad); };
+    toggleButtonRight.onClick = [&] { switchScreen(guiIdx == dials ? padMode == gain ? staticPad : dynamicPad : guiIdx == matrix ? dials : matrix); };
+    theMoreDials.button.onClick = [&] { padMode = phase; switchScreen(dynamicPad); };
+    phaseDials.button.onClick = [&] { padMode = gain; switchScreen(staticPad); };
     //    if(!deviant.marketplaceStatus.isUnlocked()) {
     //        authorizer = std::make_unique<SadisticUnlockForm>(deviant.marketplaceStatus);
     //        renderer.addAndMakeVisible(*authorizer);

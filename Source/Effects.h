@@ -22,8 +22,10 @@ namespace sadistic {
             if constexpr (std::is_same<F, FloatType>::value) {
                 for (int channel { 0 }; channel < buffer.getNumChannels(); ++channel) {
                     F* channelData { buffer.getWritePointer (channel) };
-                    for (int sample { 0 }; sample < buffer.getNumSamples(); sample++, channelData++)
+                    for (int sample { 0 }; sample < buffer.getNumSamples(); sample++, channelData++) {
                         *channelData = processAtan(*channelData, coeffs);
+                        jassert(!isnan(*channelData));
+                    }
                 }
             }
         }
@@ -47,7 +49,7 @@ namespace sadistic {
             const int bitDepth { static_cast<int>(crush_floor - mapped_input) + 1 };
             int i { 4 };
             for (; i <= bitDepth; i *= 2) ;
-            //            const auto max { static_cast<F>(i - 1) };
+//            max = static_cast<F>(i - 1);
             max = powf(floor - 1.f, 4.f) * 1024.f + 1.f;
             attenuation = 1.f;
             int currentIndex { coeffIdx };
@@ -61,7 +63,6 @@ namespace sadistic {
                 for (int j { 0 }; j < channels; ++j) {
                     auto* channelData { buffer.getWritePointer(j) };
                     for (int i { 0 }; i < samples; ++i, ++channelData) {
-                        jassert(!isnan(*channelData));
                         *channelData = crushSample(*channelData, coeffs);
                         jassert(!isnan(*channelData));
                     }
@@ -85,7 +86,6 @@ namespace sadistic {
                 for (int channel { 0 }; channel < channels; ++channel) {
                     F* channelData { buffer.getWritePointer (channel) };
                     for (int sample { 0 }; sample < samples; sample++, channelData++) {
-                        jassert(!isnan(*channelData));
                         *channelData = crushSample(*channelData, coeffs);
                         jassert(!isnan(*channelData));
                     }
@@ -133,7 +133,6 @@ namespace sadistic {
                 for (int channel { 0 }; channel < buffer.getNumChannels(); ++channel) {
                     F* channelData { buffer.getWritePointer (channel) };
                     for (int sample { 0 }; sample < buffer.getNumSamples(); sample++, channelData++) {
-                        jassert(!isnan(*channelData));
                         *channelData = deviateSample(*channelData, coeffs);
                         jassert(!isnan(*channelData));
                     }
@@ -151,7 +150,7 @@ namespace sadistic {
         void reset() override { filter.reset(); }
         int getLatency() override { return static_cast<int>(filter.state->getFilterOrder()/2); }
         void prepare(const ProcessSpec& spec) override {
-            if(spec.sampleRate != 0.0) lastSampleRate = jlimit(44100.0, 192000.0, spec.sampleRate);
+            lastSampleRate = jlimit(44100.0, 192000.0, spec.sampleRate);
             filter.prepare({ lastSampleRate, spec.maximumBlockSize, spec.numChannels }); }
         void processSamples(AudioBuffer<float>& buffer) override { processSamples<float>(buffer); }
         void processSamples(AudioBuffer<double>& buffer) override { processSamples<double>(buffer); }
@@ -162,10 +161,10 @@ namespace sadistic {
             }
         }
         void calculateCoefficients() override {
-            auto& [low, high, saturation, gateOffset, noName4, noName5, attenuation, blend] = coeffs;
+            auto& [low, high, noName2, noName3, noName4, noName5, attenuation, blend] = coeffs;
             update(lastSampleRate, low, high); }
         void update(double sR, F lo, F hi){
-            *filter.state = *makeBandpass<F>(lo, hi, sR, 32, WindowingFunction<F>::kaiser, F(4)); }
+            *filter.state = *makeBandpass<F>(lo, hi, sR, 8, WindowingFunction<F>::kaiser, F(4)); }
         double lastSampleRate { 44100.0 };
         ProcessorDuplicator<FIR::Filter<F>, FIR::Coefficients<F>> filter;
     };

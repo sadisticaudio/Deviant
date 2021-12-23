@@ -1,23 +1,9 @@
 #include "deviant.h"
 #include "RoutingMatrix.h"
 
-template<> void sadistic::SadChild<Path>::setIMG (const char*, const int) {
-//    image.loadPathFromData(img, (size_t) imgSize);
-    
-}
-template<> void sadistic::SadChild<Image>::setIMG (const char*, const int) {
-//    image = ImageCache::getFromMemory (img, imgSize);
-    
-}
-
-template<> void sadistic::SadChild<Path>::paint (Graphics& g) {
-    g.setColour(Colours::grey);
-//    auto b { getLocalBounds().toFloat().reduced(0.8f) };
-//    image.scaleToFit(b.getY(), b.getY(), b.getWidth(), b.getHeight(), Justification::centred);
-//    g.fillPath(image);
-    
-}
-template<> void sadistic::SadChild<Image>::paint (Graphics&) {}
+struct Numbers {
+    static const char*   zero_svg, * one_svg, * two_svg, * three_svg, * four_svg, * five_svg, * six_svg, * seven_svg, * eight_svg, * nine_svg, * drive_svg, * saturate_svg;
+    static const int     zero_svgSize, one_svgSize, two_svgSize, three_svgSize, four_svgSize, five_svgSize, six_svgSize, seven_svgSize, eight_svgSize, nine_svgSize, drive_svgSize, saturate_svgSize; };
 
 void sadistic::RoutingMatrix::InsertionPoint::itemDropped (const juce::DragAndDropTarget::SourceDetails& details) {
     std::cout << "ItemDropped!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
@@ -82,14 +68,6 @@ void sadistic::RoutingMatrix::InsertionPoint::itemDragExit (const SourceDetails&
     repaint(); }
 
 void sadistic::EmpiricalLAF::drawLinearSlider (Graphics& g, int x, int y, int width, int height, float sliderPos, float, float, const Slider::SliderStyle, Slider& slider)  {
-//    if (slider.isBar())  {
-//        g.setColour (slider.findColour (Slider::trackColourId));
-//        g.fillRect (slider.isHorizontal() ? Rectangle<float> (static_cast<float> (x), y + 0.5f, sliderPos - x, height - 1.0f)
-//                    : Rectangle<float> (x + 0.5f, sliderPos, width - 1.0f, y + (height - sliderPos)));
-//    }
-//    else {
-//        auto isTwoVal   = (style == Slider::SliderStyle::TwoValueVertical   || style == Slider::SliderStyle::TwoValueHorizontal);
-//        auto isThreeVal = (style == Slider::SliderStyle::ThreeValueVertical || style == Slider::SliderStyle::ThreeValueHorizontal);
         auto trackWidth = jmin (4.0f, slider.isHorizontal() ? height * 0.25f : width * 0.25f);
         Point<float> startPoint (slider.isHorizontal() ? x : x + width * 0.5f, slider.isHorizontal() ? y + height * 0.5f : height + y);
         Point<float> endPoint (slider.isHorizontal() ? width + x : startPoint.x, slider.isHorizontal() ? startPoint.y : y);
@@ -101,51 +79,14 @@ void sadistic::EmpiricalLAF::drawLinearSlider (Graphics& g, int x, int y, int wi
         
         Path valueTrack;
         Point<float> minPoint, maxPoint;
-        
-//        if (isTwoVal || isThreeVal) {
-//            minPoint = { slider.isHorizontal() ? minSliderPos : width * 0.5f, slider.isHorizontal() ? height * 0.5f : minSliderPos };
-//            maxPoint = { slider.isHorizontal() ? maxSliderPos : width * 0.5f, slider.isHorizontal() ? height * 0.5f : maxSliderPos };
-//        }
-//        else {
-            auto kx = slider.isHorizontal() ? sliderPos : (x + width * 0.5f);
-            auto ky = slider.isHorizontal() ? (y + height * 0.5f) : sliderPos;
-            minPoint = startPoint;
-            maxPoint = { kx, ky };
-//        }
-        
+        auto kx = slider.isHorizontal() ? sliderPos : (x + width * 0.5f);
+        auto ky = slider.isHorizontal() ? (y + height * 0.5f) : sliderPos;
+        minPoint = startPoint;
+        maxPoint = { kx, ky };
         valueTrack.startNewSubPath (minPoint);
-        valueTrack.lineTo (
-//                           isThreeVal ? maxPoint :
-                           maxPoint);
+        valueTrack.lineTo (maxPoint);
         g.setColour (Colour(0xaa000000));
         g.strokePath (valueTrack, { trackWidth, PathStrokeType::curved, PathStrokeType::rounded });
-        
-//        if (! isTwoVal) {
-//            g.setColour (slider.findColour (Slider::thumbColourId));
-//            Path skull;
-//            skull.loadPathFromData(sadistic::Numbers::eight_svg, (size_t) sadistic::Numbers::eight_svgSize);
-//            skull.scaleToFit(roundToInt(maxPoint.x)-4, roundToInt(maxPoint.y)-5, 10, 10, true);
-//        }
-//    }
-}
-
-void sadistic::EmpiricalLAF::drawComboBox  (Graphics& g, int width, int height, bool, int, int, int, int, ComboBox& box) {
-    auto cornerSize = box.findParentComponentOfClass<ChoicePropertyComponent>() != nullptr ? 0.0f : 3.0f;
-    Rectangle<int> boxBounds (0, 0, width, height);
-    
-    g.setColour (box.findColour (ComboBox::backgroundColourId));
-    g.fillRoundedRectangle (boxBounds.toFloat(), cornerSize);
-    
-    g.setColour (box.findColour (ComboBox::outlineColourId));
-    g.drawRoundedRectangle (boxBounds.toFloat().reduced (0.5f, 0.5f), cornerSize, 1.0f);
-    
-    Rectangle<int> arrowZone (width - 30, 0, 20, height);
-    Path path;
-    path.startNewSubPath ((float) arrowZone.getX() + 3.0f, (float) arrowZone.getCentreY() - 2.0f);
-    path.lineTo ((float) arrowZone.getCentreX(), (float) arrowZone.getCentreY() + 3.0f);
-    path.lineTo ((float) arrowZone.getRight() - 3.0f, (float) arrowZone.getCentreY() - 2.0f);
-    g.setColour (box.findColour (ComboBox::arrowColourId).withAlpha ((box.isEnabled() ? 0.9f : 0.2f)));
-    g.strokePath (path, PathStrokeType (2.0f));
 }
 
 void sadistic::EmpiricalLAF::drawRotarySlider (Graphics& g, int x, int y, int width, int height, float sliderPos,
@@ -157,24 +98,24 @@ void sadistic::EmpiricalLAF::drawRotarySlider (Graphics& g, int x, int y, int wi
     Path needles[numNeedles], num[numNumbers];
     Path tensPlaceDigits[numNumbers], hundredsPlaceDigits[2];
     if (!eSlider.isSmall) {
-        tensPlaceDigits[0].loadPathFromData(sadistic::Numbers::zero_svg, (size_t) sadistic::Numbers::zero_svgSize);
-        tensPlaceDigits[1].loadPathFromData(sadistic::Numbers::one_svg, (size_t) sadistic::Numbers::one_svgSize);
-        tensPlaceDigits[2].loadPathFromData(sadistic::Numbers::two_svg, (size_t) sadistic::Numbers::two_svgSize);
-        tensPlaceDigits[3].loadPathFromData(sadistic::Numbers::three_svg, (size_t) sadistic::Numbers::three_svgSize);
-        tensPlaceDigits[4].loadPathFromData(sadistic::Numbers::four_svg, (size_t) sadistic::Numbers::four_svgSize);
-        tensPlaceDigits[5].loadPathFromData(sadistic::Numbers::five_svg, (size_t) sadistic::Numbers::five_svgSize);
-        tensPlaceDigits[6].loadPathFromData(sadistic::Numbers::six_svg, (size_t) sadistic::Numbers::six_svgSize);
-        tensPlaceDigits[7].loadPathFromData(sadistic::Numbers::seven_svg, (size_t) sadistic::Numbers::seven_svgSize);
-        tensPlaceDigits[8].loadPathFromData(sadistic::Numbers::eight_svg, (size_t) sadistic::Numbers::eight_svgSize);
-        tensPlaceDigits[9].loadPathFromData(sadistic::Numbers::nine_svg, (size_t) sadistic::Numbers::nine_svgSize);
-        tensPlaceDigits[10].loadPathFromData(sadistic::Numbers::zero_svg, (size_t) sadistic::Numbers::zero_svgSize);
-        tensPlaceDigits[11].loadPathFromData(sadistic::Numbers::one_svg, (size_t) sadistic::Numbers::one_svgSize);
-        hundredsPlaceDigits[0].loadPathFromData(sadistic::Numbers::one_svg, (size_t) sadistic::Numbers::one_svgSize);
-        hundredsPlaceDigits[1].loadPathFromData(sadistic::Numbers::one_svg, (size_t) sadistic::Numbers::one_svgSize);
+        tensPlaceDigits[0].loadPathFromData(Numbers::zero_svg, (size_t) Numbers::zero_svgSize);
+        tensPlaceDigits[1].loadPathFromData(Numbers::one_svg, (size_t) Numbers::one_svgSize);
+        tensPlaceDigits[2].loadPathFromData(Numbers::two_svg, (size_t) Numbers::two_svgSize);
+        tensPlaceDigits[3].loadPathFromData(Numbers::three_svg, (size_t) Numbers::three_svgSize);
+        tensPlaceDigits[4].loadPathFromData(Numbers::four_svg, (size_t) Numbers::four_svgSize);
+        tensPlaceDigits[5].loadPathFromData(Numbers::five_svg, (size_t) Numbers::five_svgSize);
+        tensPlaceDigits[6].loadPathFromData(Numbers::six_svg, (size_t) Numbers::six_svgSize);
+        tensPlaceDigits[7].loadPathFromData(Numbers::seven_svg, (size_t) Numbers::seven_svgSize);
+        tensPlaceDigits[8].loadPathFromData(Numbers::eight_svg, (size_t) Numbers::eight_svgSize);
+        tensPlaceDigits[9].loadPathFromData(Numbers::nine_svg, (size_t) Numbers::nine_svgSize);
+        tensPlaceDigits[10].loadPathFromData(Numbers::zero_svg, (size_t) Numbers::zero_svgSize);
+        tensPlaceDigits[11].loadPathFromData(Numbers::one_svg, (size_t) Numbers::one_svgSize);
+        hundredsPlaceDigits[0].loadPathFromData(Numbers::one_svg, (size_t) Numbers::one_svgSize);
+        hundredsPlaceDigits[1].loadPathFromData(Numbers::one_svg, (size_t) Numbers::one_svgSize);
         g.setColour(Colour(Colours::black.withAlpha(0.5f)));
         g.fillEllipse(r);
     }
-    
+
     const auto centreX { static_cast<float>(x + width/2) }, top { static_cast<float>(y) };
     Rectangle<float> smallTick { centreX - 0.5f, top, 1.f, 6.f }, mediumTick { centreX - 0.5f, top, 1.f, 8.f }, bigTick { centreX - 1.f, top, 2.f, 10.f };
 
@@ -186,7 +127,7 @@ void sadistic::EmpiricalLAF::drawRotarySlider (Graphics& g, int x, int y, int wi
         }
         else needles[i].addRectangle (smallTick);
     }
-    
+
     if(eSlider.isSmall) {
         Path ring;
         ring.startNewSubPath(slider.getHeight()/2.f, 0.f);
@@ -229,13 +170,13 @@ void sadistic::EmpiricalLAF::drawRotarySlider (Graphics& g, int x, int y, int wi
             }
             if(i > 9) {
                 Path p;
-                p.loadPathFromData(sadistic::Numbers::one_svg, (size_t) sadistic::Numbers::one_svgSize);
+                p.loadPathFromData(Numbers::one_svg, (size_t) Numbers::one_svgSize);
                 p.applyTransform(verticalFlip);
                 p.scaleToFit(hundredsBox.getX(), hundredsBox.getY(), hundredsBox.getWidth(), hundredsBox.getHeight(), true);
                 g.fillPath(p, rot);
             }
             Path p;
-            p.loadPathFromData(sadistic::Numbers::zero_svg, (size_t) sadistic::Numbers::zero_svgSize);
+            p.loadPathFromData(Numbers::zero_svg, (size_t) Numbers::zero_svgSize);
             p.scaleToFit(onesBox.getX(), onesBox.getY(), onesBox.getWidth(), onesBox.getHeight(), true);
             g.fillPath(p, rot);
         }
@@ -295,7 +236,6 @@ void sadistic::RightEmpiricalLAF::drawLabel (Graphics& g, Label& label) {
     g.setColour(Colours::white.darker());
     rectangle.addRoundedRectangle(localArea, 5);
     g.strokePath(rectangle, PathStrokeType(3.f));
-    
 }
 
 bool sadistic::EmpiricalSlider::hitTest (int x, int y)    {
@@ -329,33 +269,3 @@ void sadistic::showLevelValue(Slider& slider, Label& valueLabel, Label& suffixLa
     else{currentValueString = String((log10(normal) * 20),1,false);}
     valueLabel.setText (currentValueString, dontSendNotification);
     suffixLabel.setText (slider.getTextValueSuffix(), dontSendNotification);};
-
-void sadistic::setWidgets(Slider& blendKnob, Slider& driveKnob, EmpiricalLAF&, Slider& saturationKnob, Label& valueLabel, Label& suffixLabel) {
-    
-    blendKnob.setScrollWheelEnabled(true);
-    blendKnob.setSliderStyle(Slider::SliderStyle::LinearHorizontal);
-    blendKnob.setDoubleClickReturnValue(true,1.0f,ModifierKeys::altModifier);
-    blendKnob.setMouseDragSensitivity (50);
-    blendKnob.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
-    blendKnob.setColour(Slider::thumbColourId, Colours::cadetblue);
-    blendKnob.setTextValueSuffix("%");
-    
-    driveKnob.setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
-    driveKnob.setRotaryParameters(0.0f, 5.81333f, true);
-    driveKnob.setDoubleClickReturnValue(true,1.0f,ModifierKeys::altModifier);
-    driveKnob.setMouseDragSensitivity (100);
-    driveKnob.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
-    driveKnob.setTextValueSuffix(" ;)");
-    
-    saturationKnob.setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
-    saturationKnob.setRotaryParameters(degreesToRadians(180.f), degreesToRadians(513.f), true);
-    saturationKnob.setDoubleClickReturnValue(true,1.0f,ModifierKeys::altModifier);
-    saturationKnob.setMouseDragSensitivity (100);
-    saturationKnob.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
-    saturationKnob.setTextValueSuffix(" :)");
-    valueLabel.setJustificationType(Justification::centred);
-    
-    valueLabel.setColour(juce::Label::textColourId, Colours::lightgrey);
-    suffixLabel.setJustificationType(Justification::centred);
-    suffixLabel.setColour(juce::Label::textColourId, Colours::lightgrey);
-};

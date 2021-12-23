@@ -65,8 +65,7 @@ namespace sadistic {
         DeviantMembers(DeviantMembers<F>& o) : dynamicAtan(o.dynamicAtan), dynamicBitCrusher(o.dynamicBitCrusher), dynamicDeviation(o.dynamicDeviation), dynamicWaveShaper(o.dynamicWaveShaper), filterA(o.filterA), filterB(o.filterB), staticAtan(o.staticAtan), staticBitCrusher(o.staticBitCrusher), staticDeviation(o.staticDeviation), staticWaveShaper(o.staticWaveShaper), params(o.params), mgmt(o.mgmt) {}
         
         void init() { for (auto* effect : effects) { effect->init(); }
-            mgmt.makeStaticTable(); mgmt.makeDynamicTable();
-            filterA.update(44100.0, 30.0, 2000.0); filterB.update(44100.0, 30.0, 10000.0); }
+            mgmt.makeStaticTable<FloatType>(staticWaveShaper.wave); mgmt.makeDynamicTable<FloatType>(); }
         
         void reset() { spectralInversionBuffer1.clear(); spectralInversionBuffer2.clear(); blendBuffer.clear(); resetAll(dynamicWaveShaper, staticWaveShaper, dynamicDeviation, staticDeviation, dynamicBitCrusher, staticBitCrusher, dynamicAtan, staticAtan, spectralInversionDelay1, spectralInversionDelay2, blendDelay); }
         
@@ -119,12 +118,11 @@ namespace sadistic {
 
             // cook our parameters and redo the waveshaping lookup tables if anything changed
             //OTHERWISE THESE UNITS WOULDNT UPDATE THEIR PARAMS
-            staticBitCrusher.cookParameters();
-            staticAtan.cookParameters();
-            staticDeviation.cookParameters();
-            dynamicAtan.cookParameters();
-            dynamicDeviation.cookParameters();
-            dynamicBitCrusher.cookParameters();
+            if (staticBitCrusher.cookParameters() || staticAtan.cookParameters() || staticDeviation.cookParameters())
+                mgmt.makeStaticTable<FloatType>(staticWaveShaper.wave);
+            
+            if (dynamicAtan.cookParameters() || dynamicDeviation.cookParameters() || dynamicBitCrusher.cookParameters())
+                mgmt.makeDynamicTable<FloatType>();
 
             //copy what's in our buffer to our blend buffer, delaying the blendBuffer by the total latency
             //and the spectralInversionBuffer by the latency of the pre-filtering

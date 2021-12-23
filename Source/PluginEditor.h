@@ -15,7 +15,6 @@ namespace sadistic {
         void timerCallback() override;
         
     private:
-        float wave[scopeSize + 4]{}, pWave[scopeSize + 4]{}, gWave[scopeSize + 4]{};
         Deviant& deviant;
         EmpiricalLAF llaf;
         int guiIdx { dials }, padMode { gain }, dialMode { 1 };

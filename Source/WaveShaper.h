@@ -6,15 +6,11 @@
 namespace sadistic {
 
     template<typename F> struct StaticWaveShaper : DeviantEffect {
-        static constexpr int waveLength { WAVELENGTH }, gainLength { GAINLENGTH };
+        static constexpr int gainLength { GAINLENGTH };
         
         StaticWaveShaper(String eID, ParamList refs, FloatParamList floatRefs, int eIDX, TableManager& s) :
         DeviantEffect(eID, refs, floatRefs, eIDX, s) {}
         template<typename OtherFloatType> StaticWaveShaper(StaticWaveShaper<OtherFloatType>& other) : DeviantEffect(other) {}
-        void calculateCoefficients() override {}
-        void reset() override {}
-        void prepare(const ProcessSpec&) override {}
-        int getLatency() override { return 0; }
         void processSamples(AudioBuffer<float>& buffer) override { processSamples<float>(buffer); }
         void processSamples(AudioBuffer<double>& buffer) override { processSamples<double>(buffer); }
         template<typename FloatType> void processSamples(AudioBuffer<FloatType>& buffer) {
@@ -44,7 +40,6 @@ namespace sadistic {
         void processSamples(AudioBuffer<float>& buffer) override { processSamples<float>(buffer); }
         void processSamples(AudioBuffer<double>& buffer) override { processSamples<double>(buffer); }
         void prepare(const ProcessSpec&) override { reset(); }
-        void calculateCoefficients() override {}
         void reset() override { for (auto& w : waveShaper) w.reset(); }
         int getLatency() override { return fifoLength; }
         struct WaveShaper {
@@ -75,7 +70,9 @@ namespace sadistic {
                 if (crossing >= waveIndex && crossing < waveIndex + bufferLength) crossing = -1;
                 for (int i { 0 }; i < bufferLength; ++i) buffer[i] = wave[waveIndex + i];
             }
-            
+            F getDC(int i, int length, F startDC, F endDC) {
+                return startDC + (endDC - startDC) * (half - std::cos((F(i) * pi)/F(length))/two); }
+            void switchDirections() { std::swap(compare, compareOther); std::swap(turn, turnOther); }
             int leftOf(int i) { return ((i - 1) + fifoLength) % fifoLength; }
             int rightOf(int i) { return (i + 1) % fifoLength; }
             
@@ -145,9 +142,6 @@ namespace sadistic {
             void convolve(int newCrossing, int newPeak, F newCrossingSlope) {
                 const int length1 { distance(crossing, secondCrossing) }, length2 { distance(secondCrossing, newCrossing) };
                 if(length1 > 1 && length2 > 1 && distance(peak, trough) > 1 && distance(trough, newPeak) > 1) {
-                    if (length1 + length2 > 500) {
-                        print("wave is", length1 + length2, String(" samples long!"));
-                    }
                     F secondSlope { getSlopeAt(secondCrossing) };
                     F amp1 { getAmpFromSlopeAndLength(crossingSlope, length1) };
                     F amp2 { getAmpFromSlopeAndLength(secondSlope, length1) };
@@ -167,10 +161,6 @@ namespace sadistic {
                     convolve(secondCrossing, newCrossing, half, one, amp3, amp4, blend, table, aCoeffs, bCoeffs, dCoeffs);
                 }
             }
-            
-            F getDC(int i, int length, F startDC, F endDC) {
-                return startDC + (endDC - startDC) * (half - std::cos((F(i) * pi)/F(length))/two); }
-            
             void convolve (int start, int end, F startPhase, F endPhase, F startAmp, F endAmp, F blend, const Table<F>& table, const float (&a)[maxCoeffs], const float (&b)[maxCoeffs], const float (&d)[maxCoeffs]) {
                 auto length { distance(start, end) };
                 F phaseStep { (endPhase - startPhase) / F(length) };
@@ -181,13 +171,9 @@ namespace sadistic {
                 for (int i { start }, j { 0 }; i != end; ++i%=fifoLength, ++j, phase += phaseStep, amp += ampStep, dc += dcStep) {
                     F phaseAmplitude { table[phase] };
                     F multipliedWithGain { amp * shapeSample(a, b, d, phaseAmplitude) };
-//                    wave[i] = blend * shapeSample(a, b, d, wave[i]) + (one - blend) * wave[i];
                     wave[i] = blend * (getDC(j, length, wave[start], wave[end]) + multipliedWithGain) + (one - blend) * wave[i];
                 }
             }
-            
-            void switchDirections() { std::swap(compare, compareOther); std::swap(turn, turnOther); }
-            
             F wave[fifoLength]{};
             Comparator compare { &WaveShaper::isTrough }, compareOther { &WaveShaper::isPeak };
             TurnFunction turn { &WaveShaper::turnTrough }, turnOther { &WaveShaper::turnPeak };
@@ -201,8 +187,8 @@ namespace sadistic {
                 for (int j { 0 }; j < buffer.getNumChannels(); ++j) waveShaper[j].process(buffer.getWritePointer(j));
         }
         
-        F wave[gainLength + 1]{}, pWave[waveLength + 1]{};
-        Table<F> gainTable { wave, static_cast<F>(gainLength), half, half };
+        F pWave[waveLength + 1]{};
+//        Table<F> gainTable { wave, static_cast<F>(gainLength), half, half };
         Table<F> phaseTable { pWave, static_cast<F>(waveLength) };
         WaveShaper waveShaper[2] { { *this }, { *this } };
         std::atomic<int>* coeffIdx;
