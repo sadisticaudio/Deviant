@@ -9,15 +9,16 @@ namespace sadistic {
         bool canAddBus (bool) const override;
         bool canRemoveBus (bool) const override;
         void prepareToPlay (double, int) override;
-        void releaseResources() override { if(getProcessingPrecision() == doublePrecision) release<double>(membersD);
-            else release<float>(membersF); }
+        void releaseResources() override { if(getProcessingPrecision() == doublePrecision) release(membersD);
+            else release(membersF); }
         bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
         void processBlock (AudioBuffer<float>&, MidiBuffer&) override;
         void processBlock (AudioBuffer<double>&, MidiBuffer&) override;
         void processBlockBypassed (AudioBuffer<float>& b, MidiBuffer&) override;
         void processBlockBypassed (AudioBuffer<double>& b, MidiBuffer&) override;
         bool supportsDoublePrecisionProcessing() const override { return true; }
-        const String getName() const override { return "ddd"; }//JucePlugin_Name; }
+        const String getName() const override { return JucePlugin_Name; }
+        const String getPluginCode() const { return getPluginCodeString(JucePlugin_PluginCode); }
         bool acceptsMidi() const override { return false; }
         bool producesMidi() const override { return false; }
         bool isMidiEffect() const override { return false; }
@@ -30,9 +31,23 @@ namespace sadistic {
         AudioProcessorEditor* createEditor() override;
         bool hasEditor() const override { return true; }
         APVTS& getAPVTS() { return apvts; }
-        TableManager& getTableManager() { return mgmt; }
-        void setCurrentScreen(int s) { apvts.state.setProperty("currentScreen", s, &undoManager); }
-        int getCurrentScreen() { return apvts.state.getProperty("currentScreen", 1); }
+
+        void setMetaParameter(const Identifier& id, int val) {
+            auto wtf = var(int(val));
+            auto x = apvts.state;
+            x.setProperty(id, var(val), &undoManager);
+            apvts.replaceState(x);
+        }
+        int getMetaParameter(const Identifier& id) {
+            auto wtfagain = apvts.state.getProperty(id);
+            return wtfagain; }//static_cast<int>(apvts.state.getProperty(id)); }
+        void setCurrentScreen(int s) {
+            apvts.state.setProperty("mainCurrentScreen", var(int(s)), &undoManager);
+        }
+        int getCurrentScreen() {
+            const auto screenProperty { static_cast<int>(apvts.state.getProperty("mainCurrentScreen")) };
+            return screenProperty;
+        }
         UndoManager* getUndoManager() { return &undoManager; }
         LongFifo<float>* getOscilloscopeFifo() { return oscilloscopeFifo; }
 
@@ -48,12 +63,7 @@ namespace sadistic {
             auto channels { jmin(getMainBusNumInputChannels(), 2, getMainBusNumOutputChannels()) };
             dsp::ProcessSpec spec { sampleRate, (uint32) samplesPerBlock, (uint32) channels };
             m.prepare(spec);
-            const auto latency { m.filterA.getLatency() + m.filterB.getLatency() + m.dynamicWaveShaper.getLatency() };
-            setLatencySamples(latency + BUFFERLENGTH);
-            m.blendDelay.setDelay(latency);
-            m.spectralInversionDelay1.setDelay(m.filterA.getLatency());
-            m.spectralInversionDelay2.setDelay(m.dynamicWaveShaper.getLatency() + m.filterB.getLatency());
-
+            setLatencySamples(m.getLatency());
         }
         
         template<typename FloatType> void processTheDamnBlock(AudioBuffer<FloatType>& buffer, DeviantMembers<FloatType>& m, bool bypassed = false) {
@@ -70,14 +80,13 @@ namespace sadistic {
         }
         
     private:
-        std::atomic<int> cIdx[6] { 0,0,0,0,0,0 };
-        float coefficients[maxCoeffs][maxCoeffs][maxCoeffs];
+        std::atomic<int> cIdx[numFX] { 0,0,0,0,0 };
+        float coefficients[numFX][maxCoeffs][maxCoeffs];
         DeviantMembers<double> membersD;
         DeviantMembers<float> membersF;
-        TableManager mgmt;
         UndoManager undoManager;
         APVTS apvts;
-        sadistic::SadisticMarketplaceStatus marketplaceStatus { "hieF" };
+        sadistic::SadisticMarketplaceStatus marketplaceStatus { getPluginCode() };
         LongFifo<float> oscilloscopeFifo[2]{};
         
         JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Deviant)

@@ -38,7 +38,6 @@ void drawWrapSegment(vec3 left, vec3 right) {
         texCoord.y = 0.0;
         vec3 leftCorner = vec3(left.x, left.y, left.z + WAVE_RADIUS);
         vec3 rightCorner = vec3(right.x, right.y, right.z + WAVE_RADIUS);
-        
         emit(leftCorner);
         for (int i = 1; i <= WAVE_GIRTH_RESOLUTION; ++i) {
             emit(rightCorner);
@@ -47,6 +46,7 @@ void drawWrapSegment(vec3 left, vec3 right) {
             extrude(right, i, rightCorner);
             emit(leftCorner);
         }
+        texCoord.y = 1.0;
         emit(rightCorner);
         EndPrimitive();
     }

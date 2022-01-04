@@ -1,224 +1,188 @@
 #pragma once
-#include "WavePad.h"
+#include "deviant.h"
 namespace sadistic {
     
-    struct Dials : DeviantScreen {
-        Dials(TableManager& t, int idx = 2) : DeviantScreen(t), button(makeLabel(getFxID(idx))), leftSVG(Data::DRIVE_svg, Colours::grey), rightSVG(Data::SATURATE_svg, Colours::grey) {
+    struct Dials : Component {
+        Dials(APVTS& t, int idx) : apvts(t), button(makeLabel(getFxName(currentEffect = idx))), driveSVG(Data::DRIVE_svg, Colours::grey) {
 
-            button.label.set(makeLabel(getFxID(idx)), Colours::black, Colours::grey.darker());
+            button.onClick = [&] { switchEffect(++currentEffect%=numFX); button.label.label.setColour(Label::backgroundColourId, button.colour); };
             
-            blendKnob.setScrollWheelEnabled(true);
-            blendKnob.setSliderStyle(Slider::SliderStyle::LinearHorizontal);
-            blendKnob.setDoubleClickReturnValue(true,1.0f,ModifierKeys::altModifier);
-            blendKnob.setMouseDragSensitivity (50);
-            blendKnob.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
-            blendKnob.setColour(Slider::thumbColourId, Colours::cadetblue);
+            forEach ([] (auto& knob) {
+                knob.setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
+                knob.setDoubleClickReturnValue(true,1.0f,ModifierKeys::altModifier);
+                knob.setMouseDragSensitivity (100);
+                knob.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
+                knob.setScrollWheelEnabled(true);
+                knob.setRotaryParameters(degreesToRadians(225.f), degreesToRadians(495.f), true);
+                knob.setTextValueSuffix("Hz");
+            }, mainBlendKnob, driveKnob, blendKnob, lowKnob, highKnob);
+            
+            lowKnob.setLookAndFeel(&alaf);
+            highKnob.setLookAndFeel(&alaf);
+            
+            mainBlendKnob.setLookAndFeel(&alaf);
+            mainBlendKnob.setSliderStyle(Slider::SliderStyle::LinearHorizontal);
+            mainBlendKnob.setTextValueSuffix("%");
+            
+            driveKnob.setRotaryParameters(degreesToRadians(0.f), 5.81333f, true);
+            blendKnob.setRotaryParameters(degreesToRadians(180.f), degreesToRadians(510.f), true);
             blendKnob.setTextValueSuffix("%");
-            
-            leftKnob.setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
-            leftKnob.setRotaryParameters(0.0f, 5.81333f, true);
-            leftKnob.setDoubleClickReturnValue(true,1.0f,ModifierKeys::altModifier);
-            leftKnob.setMouseDragSensitivity (100);
-            leftKnob.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
-            leftKnob.setTextValueSuffix(" ;)");
-            
-            rightKnob.setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
-            rightKnob.setRotaryParameters(degreesToRadians(180.f), degreesToRadians(513.f), true);
-            rightKnob.setDoubleClickReturnValue(true,1.0f,ModifierKeys::altModifier);
-            rightKnob.setMouseDragSensitivity (100);
-            rightKnob.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
-            rightKnob.setTextValueSuffix(" :)");
-            valueLabel.setJustificationType(Justification::centred);
-            
-            valueLabel.setColour(juce::Label::textColourId, Colours::lightgrey);
-            suffixLabel.setJustificationType(Justification::centred);
-            suffixLabel.setColour(juce::Label::textColourId, Colours::lightgrey);
-            
-            leftKnob.onDragStart = [&,this]() {
-                showEmpiricalValue(leftKnob, valueLabel, leftSVG);
-                leftSVG.setRotation(leftKnob.getNormalisedValue() * MathConstants<float>::twoPi);
+
+            forEach ([] (auto& label) { label.setJustificationType(Justification::centred);
+                label.setColour(juce::Label::textColourId, Colours::lightgrey); }, valueLabel, suffixLabel, lLabel, lSuffix, rLabel, rSuffix);
+
+            driveKnob.onDragStart = [&,this]() {
+                hideValue(valueLabel, suffixLabel);
+                showEmpiricalValue(driveKnob, valueLabel, driveSVG);
+                driveSVG.setRotation(driveKnob.getNormalisedValue() * MathConstants<float>::twoPi);
                 repaint(); };
-            leftKnob.onValueChange = [&,this]() {
-                showEmpiricalValue(leftKnob, valueLabel, leftSVG);
-                leftSVG.setRotation(leftKnob.getNormalisedValue() * MathConstants<float>::twoPi);
+            driveKnob.onValueChange = [&,this]() {
+                showEmpiricalValue(driveKnob, valueLabel, driveSVG);
+                driveSVG.setRotation(driveKnob.getNormalisedValue() * MathConstants<float>::twoPi);
                 repaint(); };
-            leftKnob.onDragEnd = [&,this]() { hideValue(valueLabel, leftSVG);};
+            driveKnob.onDragEnd = [&,this]() { hideValue(valueLabel, driveSVG);};
             
-            rightKnob.onDragStart = [&,this]() {
-                showEmpiricalValue(rightKnob, valueLabel, rightSVG);
-                rightSVG.setRotation(rightKnob.getNormalisedValue() * MathConstants<float>::twoPi);
+            blendKnob.onDragStart = [&,this]() {
+                hideValue(valueLabel, suffixLabel);
+                showIntegerValue(blendKnob, valueLabel, suffixLabel);
                 repaint(); };
-            rightKnob.onValueChange = [&,this]() {
-                showEmpiricalValue(rightKnob, valueLabel, rightSVG);
-                rightSVG.setRotation(rightKnob.getNormalisedValue() * MathConstants<float>::twoPi);
+            blendKnob.onValueChange = [&,this]() {
+                showIntegerValue(blendKnob, valueLabel, suffixLabel);
                 repaint(); };
-            rightKnob.onDragEnd = [&,this]() { hideValue(valueLabel, rightSVG);};
-            
-            blendKnob.onDragStart = [&,this]() { showIntegerValue(blendKnob, valueLabel, suffixLabel);};
-            blendKnob.onValueChange = [&,this]() { showIntegerValue(blendKnob, valueLabel, suffixLabel); };
             blendKnob.onDragEnd = [&,this]() { hideValue(valueLabel, suffixLabel);};
             
-            addAllAndMakeVisible(*this, blendKnob, rightKnob, leftKnob, rightSVG, leftSVG, suffixLabel, valueLabel, button);
+            mainBlendKnob.onDragStart = [&,this]() { hideValue(valueLabel, suffixLabel); showIntegerValue(mainBlendKnob, valueLabel, suffixLabel);};
+            mainBlendKnob.onValueChange = [&,this]() { showIntegerValue(mainBlendKnob, valueLabel, suffixLabel); };
+            mainBlendKnob.onDragEnd = [&,this]() { hideValue(valueLabel, suffixLabel); };
             
-            leftAttachment = std::make_unique<APVTS::SliderAttachment>(mgmt.apvts, getParamID(idx, 0), leftKnob);
-            if (effectInfo[idx].numParams > 1)
-                rightAttachment = std::make_unique<APVTS::SliderAttachment>(mgmt.apvts, getParamID(idx, 1), rightKnob);
-            blendAttachment = std::make_unique<APVTS::SliderAttachment>(mgmt.apvts, "mainBlend" /* getFxID(idx) + "Blend" */, blendKnob);
-
+            lowKnob.onDragStart = [&,this]() { hideValue(valueLabel, suffixLabel); showHzValue(lowKnob, lLabel, lSuffix);};
+            lowKnob.onValueChange = [&,this]() {
+                if (highKnob.getValue() < lowKnob.getValue())
+                    highKnob.setValue(lowKnob.getValue(), sendNotification);
+                showHzValue(lowKnob, lLabel, lSuffix); };
+            lowKnob.onDragEnd = [&,this]() { hideValue(lLabel, lSuffix); hideValue(rLabel, rSuffix); };
+            
+            highKnob.onDragStart = [&,this]() { hideValue(valueLabel, suffixLabel); showHzValue(highKnob, rLabel, rSuffix);};
+            highKnob.onValueChange = [&,this]() {
+                if (highKnob.getValue() < lowKnob.getValue())
+                    lowKnob.setValue(highKnob.getValue(), sendNotification);
+                showHzValue(highKnob, rLabel, rSuffix); };
+            highKnob.onDragEnd = [&,this]() { hideValue(rLabel, rSuffix); hideValue(lLabel, lSuffix); };
+            
+            addAllAndMakeVisible(*this, blendKnob, driveKnob, driveSVG, suffixLabel, valueLabel, lLabel, rLabel, button);
+            
+            addChildComponent(mainBlendKnob);
+            addChildComponent(lowKnob);
+            addChildComponent(highKnob);
+            
+            mainBlendAttachment = std::make_unique<APVTS::SliderAttachment>(apvts, "mainBlend", mainBlendKnob);
+            
+            setMouseOverLabels(lowKnob, "Low", "Cutoff");
+            setMouseOverLabels(highKnob, "High", "Cutoff");
+            setMouseOverLabels(mainBlendKnob, "Main", "Blend");
+            
+            lowKnob.showMouseOver = [&] { if(mouseOverActive) showMouseOverLabels(lowKnob, valueLabel, suffixLabel); repaint(); };
+            lowKnob.hideMouseOver = [&] { if(mouseOverActive) hideMouseOverLabels(lowKnob, valueLabel, suffixLabel); repaint(); };
+            highKnob.showMouseOver = [&] { if(mouseOverActive) showMouseOverLabels(highKnob, valueLabel, suffixLabel); repaint(); };
+            highKnob.hideMouseOver = [&] { if(mouseOverActive) hideMouseOverLabels(highKnob, valueLabel, suffixLabel); repaint(); };
+            driveKnob.showMouseOver = [&] { if(mouseOverActive) showMouseOverLabels(driveKnob, valueLabel, suffixLabel); repaint(); };
+            driveKnob.hideMouseOver = [&] { if(mouseOverActive) hideMouseOverLabels(driveKnob, valueLabel, suffixLabel); repaint(); };
+            blendKnob.showMouseOver = [&] { if(mouseOverActive) showMouseOverLabels(blendKnob, valueLabel, suffixLabel); repaint(); };
+            blendKnob.hideMouseOver = [&] { if(mouseOverActive) hideMouseOverLabels(blendKnob, valueLabel, suffixLabel); repaint(); };
+            mainBlendKnob.showMouseOver = [&] { if(mouseOverActive) showMouseOverLabels(mainBlendKnob, valueLabel, suffixLabel); repaint(); };
+            mainBlendKnob.hideMouseOver = [&] { if(mouseOverActive) hideMouseOverLabels(mainBlendKnob, valueLabel, suffixLabel); repaint(); };
+            
+            popupMenu.toggleMouseOverEnabled = [&]{ mouseOverActive = mouseOverActive ? false : true; repaint(); };
+            popupMenu.toggleControls = [&]{ controlsActive = controlsActive ? false : true;
+                forEach ([ctrls = controlsActive] (auto& knob) { knob.setVisible(ctrls); }, mainBlendKnob, lowKnob, highKnob);
+                repaint(); };
+            
+            switchEffect(idx);
+        }
+        void switchEffect(int idx) {
+            apvts.state.setProperty(IDs::currentScreen, var(int(currentEffect)), nullptr);
+            
+            button.label.set(makeLabel(getFxName(idx)), Colours::black, Colours::grey.darker());
+            forEach ([] (auto& attachment) { attachment.reset(); }, driveAttachment, blendAttachment, lowAttachment, highAttachment);
+            driveAttachment = std::make_unique<APVTS::SliderAttachment>(apvts, getFxID(idx) + "Drive", driveKnob);
+            blendAttachment = std::make_unique<APVTS::SliderAttachment>(apvts, getFxID(idx) + "Blend", blendKnob);
+            lowAttachment = std::make_unique<APVTS::SliderAttachment>(apvts, getFxID(idx) + "Low", lowKnob);
+            highAttachment = std::make_unique<APVTS::SliderAttachment>(apvts, getFxID(idx) + "High", highKnob);
+            
+            lowKnob.setNormalisableRange({ 20.0, 20000.0, 0.0, 0.3 });
+            highKnob.setNormalisableRange({ 20.0, 20000.0, 0.0, 0.3 });
+            driveKnob.setNormalisableRange({ 0.0, 111.0, 1.0 });
+            blendKnob.setNormalisableRange({ 0.0, 1.0, 0.01 });
+            
+            setMouseOverLabels(driveKnob, getFxID(idx).trimCharactersAtStart("static"), "Drive");
+            setMouseOverLabels(blendKnob, getFxID(idx).trimCharactersAtStart("static"), "Blend");
+            
             hideValue(valueLabel, suffixLabel);
-            leftSVG.setVisible(false);
-            rightSVG.setVisible(false);
+            hideValue(lLabel, lSuffix);
+            hideValue(rLabel, rSuffix);
+            driveSVG.setVisible(false);
         }
 
         void resized() override {
             const auto bounds { getBounds() };
-            leftKnob.setMouseDragSensitivity(static_cast<int>((double)bounds.getHeight() * 0.98));
-            rightKnob.setMouseDragSensitivity(static_cast<int>((double)bounds.getHeight() * 0.98));
+            driveKnob.setMouseDragSensitivity(static_cast<int>((double)bounds.getHeight() * 0.98));
+            blendKnob.setMouseDragSensitivity(static_cast<int>((double)bounds.getHeight() * 0.98));
             
             auto h { getHeight() }, w { getWidth() }, diameter { jmax(5 * w / 8, 5 * h / 4) };
             
-            leftKnob.setSize(diameter, diameter);
-            rightKnob.setSize(diameter, diameter);
-            leftKnob.setTopRightPosition(getWidth()/2 - 50, h/2 - diameter/2);
-            rightKnob.setTopLeftPosition(w/2 + 50, h/2 - diameter/2);
-            Rectangle<int> r { bounds.getX(), bounds.getY(), (leftKnob.getRight() - 40) - bounds.getX(), h };
+            driveKnob.setSize(diameter, diameter);
+            blendKnob.setSize(diameter, diameter);
+            driveKnob.setTopRightPosition(getWidth()/2 - 50, h/2 - diameter/2);
+            blendKnob.setTopLeftPosition(w/2 + 50, h/2 - diameter/2);
+            Rectangle<int> r { bounds.getX(), bounds.getY(), (driveKnob.getRight() - 40) - bounds.getX(), h };
             r.reduce(0, jmax(r.getHeight()/6, r.getWidth()/6));
-            valueLabel.setBounds(r);
-            suffixLabel.setBounds(r.withX(rightKnob.getX() + 40));
-            leftSVG.setBounds(rightKnob.getBounds().reduced(leftKnob.getWidth()/6));
-            rightSVG.setBounds(rightKnob.getBounds().reduced(rightKnob.getWidth()/8));
-            auto blendBounds { Rectangle<int>(static_cast<int>((float)(rightKnob.getX() - leftKnob.getRight() + getWidth()/8) * (float)getHeight()/(float)leftKnob.getHeight()), 20) };
-            blendKnob.setSize(blendBounds.getWidth(), blendBounds.getHeight());
-            blendKnob.setCentrePosition(bounds.getCentre().x, blendBounds.getHeight()/2);
             
-            valueLabel.setFont(getSadisticFont(jmin(valueLabel.getHeight() / 2, valueLabel.getWidth() / 2)));
-            suffixLabel.setFont(getSadisticFont(jmin(suffixLabel.getHeight() / 2, suffixLabel.getWidth() / 2)));
+            auto leftArea { r }, rightArea { r.withX(blendKnob.getX() + 40) };
             
-            rightKnob.setMouseDragSensitivity(bounds.getHeight() / 2);
-            leftKnob.setMouseDragSensitivity(bounds.getHeight() / 2);
+            valueLabel.setBounds(leftArea);
+            suffixLabel.setBounds(rightArea);
+            lLabel.setBounds(leftArea);
+            rLabel.setBounds(rightArea);
+            
+            lSuffix.setSize(lLabel.getWidth()/3, lLabel.getHeight()/3);
+            lSuffix.setTopLeftPosition(lLabel.getRight(), (lLabel.getHeight()/4) * 3);
+            rSuffix.setSize(rLabel.getWidth()/3, rLabel.getHeight()/3);
+            rSuffix.setTopLeftPosition(rLabel.getRight(), (rLabel.getHeight()/4) * 3);
+            
+            driveSVG.setBounds(blendKnob.getBounds().reduced(driveKnob.getWidth()/6));
+            auto blendBounds { Rectangle<int>(static_cast<int>((float)(blendKnob.getX() - driveKnob.getRight() + getWidth()/8) * (float)getHeight()/(float)driveKnob.getHeight()), 20) };
+            mainBlendKnob.setSize(blendBounds.getWidth(), blendBounds.getHeight());
+            mainBlendKnob.setCentrePosition(bounds.getCentre().x, blendBounds.getHeight()/2);
+            
+            forEach ([] (Label& label) { label.setFont(getSadisticFont().withHeight(jmin(label.getHeight() * 2 / 3, label.getWidth() * 2 / 3))); label.setColour(Label::ColourIds::textColourId, Colours::grey); }, valueLabel, suffixLabel, lLabel, lSuffix, rLabel, rSuffix);
+
+            blendKnob.setMouseDragSensitivity(bounds.getHeight() / 2);
+            driveKnob.setMouseDragSensitivity(bounds.getHeight() / 2);
             
             auto toggleWidth { 150 }, toggleHeight { 15 };
             button.setSize(toggleWidth, toggleHeight);
             button.setCentrePosition(getWidth()/2, h - 2 * toggleHeight);
+            
+            lowKnob.setSize(toggleWidth/3, toggleWidth/3);
+            highKnob.setSize(toggleWidth/3, toggleWidth/3);
+            auto topCentreOfButton { button.getBounds().getCentre().withY(button.getBounds().getY()) };
+            lowKnob.setTopRightPosition(topCentreOfButton.x, topCentreOfButton.y - toggleWidth/3);
+            highKnob.setTopLeftPosition(topCentreOfButton.x, topCentreOfButton.y - toggleWidth/3);
         }
+        void mouseDown(const MouseEvent& e) override { if (e.mods.isRightButtonDown()) { popupMenu.show(this); } }
         
-        sadistic::EmpiricalLAF llaf;
+        FilterLAF alaf;
+        APVTS& apvts;
         SadTextButton button;
-        SadSVG leftSVG, rightSVG;
-        sadistic::TransLabel valueLabel, suffixLabel;
-        EmpiricalSlider leftKnob, rightKnob;
-        Slider blendKnob;
-        std::unique_ptr<APVTS::SliderAttachment> leftAttachment, rightAttachment, blendAttachment;
+        SadSVG driveSVG;
+        sadistic::TransLabel valueLabel, suffixLabel, lLabel, rLabel, lSuffix, rSuffix;
+        int currentEffect;
+        EmpiricalSlider driveKnob { true }, blendKnob;
+        FilterKnob lowKnob { Data::apiKnob_svg }, highKnob { Data::apiKnob_svg };
+        DeviantSlider mainBlendKnob;
+        bool mouseOverActive { false }, controlsActive { false };
+        RightClickMenu popupMenu;
+        std::unique_ptr<APVTS::SliderAttachment> driveAttachment, lowAttachment, highAttachment, blendAttachment, mainBlendAttachment;
     };
     
-    template<typename TableType> struct MoreDials : DeviantScreen {
-        
-        static constexpr int numSliders { 12 }, numPanels { 4 };
-        struct Panel : Component {
-            Panel(int n, EmpiricalSlider* s, EmpiricalSlider* bS) : num(n) {
-                for (int i { 0 }; i < num; ++i) {
-                    sliders[i] = &s[i];
-                    addAndMakeVisible(sliders[i]);
-                }
-                sliders[num] = bS;
-                addAndMakeVisible(sliders[num]);
-            }
-            void resized() override {
-                const auto localBounds { getLocalBounds() };
-                Rectangle<int> bounds[4];
-                bounds[0] = getLocalBounds();
-                int removal = bounds[0].getHeight()/(num+1);
-                for (int i = 1; i <= num; ++i) bounds[i] = bounds[0].removeFromBottom(removal);
-                for (int i { 0 }; i <= num; ++i) {
-                    if(sliders[i]->isLeft) sliders[i]->setBounds(bounds[i]);
-                    else sliders[i]->setBounds(bounds[i]);
-                    sliders[i]->setTextBoxStyle(sliders[i]->isLeft ? Slider::TextBoxLeft : Slider::TextBoxRight, false, localBounds.getHeight()/num, localBounds.getHeight()/num);
-                }
-            }
-            int num;
-            EmpiricalSlider* sliders[4] { nullptr };
-        };
-        MoreDials(TableManager& m, float* g, float* p) : DeviantScreen(m), pad(g, p), pWave(p) {
-            
-            for(int j { 0 }; j < numPanels; ++j) {
-                for(int i { 0 }; i <= panel[j].num; ++i) {
-                    if(j < 2) panel[j].sliders[i]->setLookAndFeel(&lelaf);
-                    else panel[j].sliders[i]->setLookAndFeel(&relaf);
-                    panel[j].sliders[i]->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
-                    if(j > 1) {
-                        if(!panel[j].sliders[i]->isDefaultHigh) panel[j].sliders[i]->setRotaryParameters(0.0f, 5.81333f, true);
-                        else panel[j].sliders[i]->setRotaryParameters(5.81333f, 0.0f, true);
-                    }
-                    else {
-                        if(panel[j].sliders[i]->isDefaultHigh) panel[j].sliders[i]->setRotaryParameters(degreesToRadians(513.f), degreesToRadians(180.f), true);
-                        else panel[j].sliders[i]->setRotaryParameters(degreesToRadians(180.f), degreesToRadians(513.f), true);
-                    }
-                    panel[j].sliders[i]->setDoubleClickReturnValue(true, 1.0f, ModifierKeys::altModifier);
-                    panel[j].sliders[i]->setMouseDragSensitivity (50);
-                    panel[j].sliders[i]->setNumDecimalPlacesToDisplay(2);
-                    addAndMakeVisible(panel[j]);
-                }
-                addAndMakeVisible(panel[j]);
-            }
-            addAndMakeVisible(frame);
-            knobs[1].setNormalisableRange({ knobs[1].getMinimum(), knobs[1].getMaximum(), 0.0, 0.2 });
-            knobs[4].setNormalisableRange({ knobs[4].getMinimum(), knobs[4].getMaximum(), 0.0, 0.2 });
-            knobs[5].setNormalisableRange({ knobs[5].getMinimum(), knobs[5].getMaximum(), 0.0, 0.6 });
-            
-            if (pad.table.type.contains("dynamic")) {
-                phaseBox.setSelectedId(int(*mgmt.apvts.getRawParameterValue("mainWaveTableID")));
-                phaseBox.setText("PHASE TABLES");
-                addAndMakeVisible(phaseBox);
-            }
-            addAndMakeVisible(pad);
-            addAllAndMakeVisible(*this, xAxisLabel, yAxisLabel, button);
-            button.label.set(pad.table.buttonString, pad.table.textColour, pad.table.bgColour);
-        }
-        
-        void resized() override {
-            Rectangle<int> middle { getLocalBounds() };
-            Rectangle<int> bounds[4];
-            bounds[0] = middle.removeFromLeft(getWidth()/8);
-            bounds[1] = bounds[0].removeFromTop(getHeight()/2);
-            bounds[2] = middle.removeFromRight(getWidth()/8);
-            bounds[3] = bounds[2].removeFromTop(getHeight()/2);
-            for(int j { 0 }; j < numPanels; ++j) panel[j].setBounds(bounds[j]);
-            frame.setBounds(getLocalBounds().reduced(getLocalBounds().getWidth()/8, 0));
-            button.setBounds(middle.getX() + middle.getWidth() - 105, middle.getY() + 5, 95, 15);
-            xAxisLabel.setBounds(middle.getX(), middle.getY() + 9 * middle.getHeight()/10, middle.getWidth(), middle.getHeight()/10);
-            yAxisLabel.setBounds(middle.getX(), middle.getY(), middle.getHeight()/10, middle.getHeight());
-            pad.setBounds(middle.reduced(20));
-            phaseBox.setBounds(middle.getX() + 5,middle.getY() + 5, 150, 20);
-        }
-        
-        Frame frame;
-        WavePad<TableType> pad;
-        LeftEmpiricalLAF lelaf;
-        RightEmpiricalLAF relaf;
-        Image   volume, filter, in, out, hz, dB;
-        sadistic::TransLabel valueLabel, suffixLabel;
-        EmpiricalSlider knobs[numSliders] { { true, true }, { true, true }, { false, true }, { false, true }, { true, true }, { true, true, true }, { false, true }, { false, true, true }, { true, true, true }, { false, true, true }, { true, true, true }, { false, true, true } };
-        APVTS::SliderAttachment attachments[numSliders] {
-            { mgmt.apvts, { pad.table.type +    "AtanDrive" },            knobs[0] },
-            { mgmt.apvts, { pad.table.type +    "DeviationGate" },        knobs[1] },
-            { mgmt.apvts, { pad.table.type +    "BitCrusherFloor" },      knobs[2] },
-            { mgmt.apvts, { pad.table.type +    "BitCrusherDrive" },      knobs[3] },
-            { mgmt.apvts, { pad.table.type +    "DeviationDrive" },       knobs[4] },
-            { mgmt.apvts, { pad.table.type +    "DeviationSaturation" },  knobs[5] },
-            { mgmt.apvts, {                     "filterAHigh" },          knobs[6] },
-            { mgmt.apvts, {                     "filterBHigh" },          knobs[7] },
-            { mgmt.apvts, { pad.table.type +    "AtanBlend" },            knobs[8] },
-            { mgmt.apvts, { pad.table.type +    "BitCrusherBlend" },      knobs[9] },
-            { mgmt.apvts, { pad.table.type +    "DeviationBlend" },       knobs[10] },
-            { mgmt.apvts, {                     "filterBHigh" },          knobs[11] }
-        };
-        Panel panel[numPanels] { { 2, &knobs[4], &knobs[10] }, { 2, &knobs[0], &knobs[8] }, { 2, &knobs[6], &knobs[11] }, { 2, &knobs[2], &knobs[9] } };
-        
-        SadLabel xAxisLabel { pad.table.xString, false, false, 0.f };
-        SadLabel yAxisLabel { pad.table.yString, true, false, -0.5f };
-        SadTextButton button { pad.table.buttonString };
-        SadBox phaseBox { "PHASE TABLES", mgmt };
-        APVTS::ComboBoxAttachment boxAttachment { mgmt.apvts, "mainWaveTableID", phaseBox };
-        float* pWave { nullptr };
-    };
 }

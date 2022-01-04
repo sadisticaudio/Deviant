@@ -1,111 +1,97 @@
 #pragma once
+#if (SADISTIC_PRO == 1)
 #include "../../Source/SadisticUnlockform.h"
-#include "../../Source/SadisticLagrange.h"
+#else
+#include "SadisticUnlockform.h"
+#endif
+
 
 namespace sadistic {
     
     enum { wetSignal = 0, drySignal, numSignals };
-    enum { maxCoeffs = 8 , numFX = 10, WAVELENGTH = 2048, GAINLENGTH = 256 };
-    enum { matrix, dials, staticPad, dynamicPad, numDisplays };
-
-    using namespace std::chrono;
-    using hi_res = high_resolution_clock;
+    enum { maxCoeffs = 8, numFX = 5 };
+    enum { GAINLENGTH = 256 };
     
-    static inline const Identifier staticIdentifier { "static" }, dynamicIdentifier { "dynamic" }, neitherIdentifier { "n" };
+    static inline const Colour wetSignalColour { Colour::fromFloatRGBA(0.f, 0.9f, 0.9f, 1.f) }, drySignalColour { Colour::fromFloatRGBA(0.8f, 0.9f, 0.1f, 1.f) };
+
+    struct IDs {
+        static inline const Identifier currentScreen { "currentScreen" };
+        static inline const Identifier staticIdentifier { "static" };
+        static inline const Identifier dynamicIdentifier { "dynamic" };
+        static inline const Identifier neitherIdentifier { "neither" };
+    };
     struct EffectInfo { bool defaultEnabled; int defaultRoute; int defaultIndex; float defaultBlend; int numParams; };
     
-    static constexpr std::string_view fxName[] {
-        "Dynamic Atan",
-        "Dynamic Bit Crusher",
-        "Dynamic Deviation",
-        "Dynamic Waveshaper",
-        "Filter A",
-        "Filter B",
+    constexpr const char* fxName[] {
         "Static Atan",
         "Static Bit Crusher",
+        "Static Clipper",
         "Static Deviation",
-        "Static WaveShaper",
+        "Static Hyperbolic",
         "Main"
     };
     
-    static constexpr std::string_view fxID[] {
-        "dynamicAtan",
-        "dynamicBitCrusher",
-        "dynamicDeviation",
-        "dynamicWaveShaper",
-        "filterA",
-        "filterB",
+    constexpr const char* fxID[] {
         "staticAtan",
         "staticBitCrusher",
+        "staticClipper",
         "staticDeviation",
-        "staticWaveShaper",
+        "staticHyperbolic",
         "main"
     };
     
-    static constexpr EffectInfo effectInfo[] {
-        { true, 1, 0, 0.f, 1 },
-        { true, 1, 1, 0.f, 2 },
-        { true, 1, 2, 0.f, 3 },
-        { true, 1, 3, 1.f, 2 },
-        { true, 0, 0, 1.f, 2 },
-        { true, 3, 0, 1.f, 2 },
-        { true, 2, 0, 0.f, 1 },
-        { true, 2, 1, 0.f, 2 },
-        { true, 2, 2, 0.f, 3 },
-        { true, 2, 3, 1.f, 1 },
-        { true, 4, 0, 1.f, 4 }
+    constexpr EffectInfo effectInfo[] {
+        { true, 2, 0, 1.f, 3 },
+        { true, 2, 1, 1.f, 3 },
+        { true, 2, 2, 1.f, 3 },
+        { true, 2, 3, 1.f, 3 },
+        { true, 2, 4, 1.f, 3 },
+        { true, 4, 0, 1.f, 1 }
     };
     
-    static constexpr std::string_view paramName[][4] {
-        { "Drive" },
-        { "Drive", "Floor" },
-        { "Drive", "Gate", "Saturation" },
-        { "Drive", "Table Position" },
-        { "Low Cutoff", "High Cutoff" },
-        { "Low Cutoff", "High Cutoff" },
-        { "Drive" },
-        { "Drive", "Floor" },
-        { "Drive", "Gate", "Saturation" },
-        { "Drive" },
-        { "Blend", "Current Screen", "Wave Table ID", "Output Gain" }
+    constexpr const char* paramName[][4] {
+        { "Drive", "Low Cutoff", "High Cutoff" },
+        { "Drive", "Low Cutoff", "High Cutoff" },
+        { "Drive", "Low Cutoff", "High Cutoff" },
+        { "Drive", "Low Cutoff", "High Cutoff" },
+        { "Drive", "Low Cutoff", "High Cutoff" },
+        { "Blend" }
     };
     
-    static constexpr std::string_view paramID[][4] {
-        { "Drive" },
-        { "Drive", "Floor" },
-        { "Drive", "Gate", "Saturation" },
-        { "Drive", "TablePosition" },
-        { "Low", "High" },
-        { "Low", "High" },
-        { "Drive" },
-        { "Drive", "Floor" },
-        { "Drive", "Gate", "Saturation" },
-        { "Drive" },
-        { "Blend", "CurrentScreen", "WaveTableID", "OutputGain" }
+    constexpr const char* paramID[][4] {
+        { "Drive", "Low", "High" },
+        { "Drive", "Low", "High" },
+        { "Drive", "Low", "High" },
+        { "Drive", "Low", "High" },
+        { "Drive", "Low", "High" },
+        { "Blend" }
     };
     
-    static constexpr ParamInfo paramInfo[][4] {
-        { { 0.f, 1.f, 0.f, ParamInfo::dB } },
-        { { 0.f, 1.f, 0.f, ParamInfo::dB }, { 0.f, 1.f, 0.f, ParamInfo::dB } },
-        { { 1.f, 1000.f, 1.f, ParamInfo::dB }, { 1.f, 1000.f, 1.f, ParamInfo::dB }, { 2.f, 50.f, 2.f, ParamInfo::dB } },
-        { { 0.f, 1.f, 0.f, ParamInfo::dB }, { 0.f, 1.f, 0.f, ParamInfo::dB } },
-        { { 20.f, 20000.f, 20.f, ParamInfo::Hz }, { 20.f, 20000.f, 2000.f, ParamInfo::Hz } },
-        { { 20.f, 20000.f, 20.f, ParamInfo::Hz }, { 20.f, 20000.f, 10000.f, ParamInfo::Hz } },
-        { { 0.f, 1.f, 0.f, ParamInfo::dB } },
-        { { 0.f, 1.f, 0.f, ParamInfo::dB }, { 0.f, 1.f, 0.f, ParamInfo::dB } },
-        { { 1.f, 1000.f, 1.f, ParamInfo::dB }, { 1.f, 1000.f, 1.f, ParamInfo::dB }, { 2.f, 50.f, 2.f, ParamInfo::dB } },
-        { { 0.f, 1.f, 0.f, ParamInfo::dB } },
-        { { 0.f, 1.f, 1.f, ParamInfo::dB }, { 0.f, 10.f, 1.f, ParamInfo::dB }, { 0.f, 1.f, 1.f, ParamInfo::Int }, { 0.f, 1.f, 1.f, ParamInfo::dB } }
+    constexpr ParamInfo paramInfo[][4] {
+        { { 0.f, 111.f, 0.f, ParamInfo::dB }, { 20.f, 20000.f, 20.f, ParamInfo::Hz }, { 20.f, 20000.f, 20000.f, ParamInfo::Hz } },
+        { { 0.f, 111.f, 0.f, ParamInfo::dB }, { 20.f, 20000.f, 20.f, ParamInfo::Hz }, { 20.f, 20000.f, 20000.f, ParamInfo::Hz } },
+        { { 0.f, 111.f, 0.f, ParamInfo::dB }, { 20.f, 20000.f, 20.f, ParamInfo::Hz }, { 20.f, 20000.f, 20000.f, ParamInfo::Hz } },
+        { { 0.f, 111.f, 0.f, ParamInfo::dB }, { 20.f, 20000.f, 20.f, ParamInfo::Hz }, { 20.f, 20000.f, 20000.f, ParamInfo::Hz } },
+        { { 0.f, 111.f, 0.f, ParamInfo::dB }, { 20.f, 20000.f, 20.f, ParamInfo::Hz }, { 20.f, 20000.f, 20000.f, ParamInfo::Hz } },
+        { { 0.f, 1.f, 1.f, ParamInfo::dB } }
     };
     
-    static inline String getFxID(int effectIndex) { return { fxID[effectIndex].data(), fxID[effectIndex].size() }; }
-    static inline String getFxName(int effectIndex) { return { fxName[effectIndex].data(), fxName[effectIndex].size() }; }
-    static inline String getParamID(int eIndex, int pIndex) { return { getFxID(eIndex) + String(paramID[eIndex][pIndex].data(), paramID[eIndex][pIndex].size()) }; }
-    static inline String getParamName(int eIndex, int pIndex) { return { getFxName(eIndex) + " " + String(paramName[eIndex][pIndex].data(), paramName[eIndex][pIndex].size()) }; }
-    String inline makeLabel(String name, String label = String()) {
+    inline String getFxID(int effectIndex) { return { fxID[effectIndex] }; }
+    inline String getFxName(int effectIndex) { return { fxName[effectIndex] }; }
+    inline String getParamID(int eIndex, int pIndex) { return { getFxID(eIndex) + String(paramID[eIndex][pIndex]) }; }
+    inline String getParamName(int eIndex, int pIndex) { return { getFxName(eIndex) + " " + String(paramName[eIndex][pIndex]) }; }
+    inline String makeLabel(String name, String label = String()) {
         for (int i { 0 }; i < name.length(); ++i) { label += name[i]; if (i != name.length() - 1) label += " "; }
         return label.toUpperCase(); }
-    String inline getSuffix(ParamInfo::ParamType pT) { return pT == dB ? "dB" : pT == Hz ? "Hz" : "%"; }
+    inline String getSuffix(ParamInfo::ParamType pT) { return pT == dB ? "dB" : pT == Hz ? "Hz" : "%"; }
+    
+    template <typename Param, typename ListType, typename ...Ts>
+    static void addParameter (APVTS::ParameterLayout& layout, ListType& pList, Ts... ts) {
+        std::unique_ptr<Param> param = std::make_unique<Param> (std::forward<Ts> (ts)...);
+        auto& ref = *param;
+        layout.add(std::move(param));
+        pList.emplace_back(ref);
+    }
     
     template <typename FloatType>
     typename FIR::Coefficients<FloatType>::Ptr makeBandpass(FloatType lowFrequency, FloatType highFrequency, double sampleRate, size_t order, typename WindowingFunction<FloatType>::WindowingMethod type, FloatType beta = 2.0) {
@@ -128,207 +114,79 @@ namespace sadistic {
         theWindow.multiplyWithWindowingTable (c, order + 1);
         return result;
     };
-    
+
     template<typename F> inline F rround(F f) { return f > F(0) ? floor (f + F(0.5)) : ceil(f - F(0.5)); }
     template<typename F> inline F fastatan( F x ) { return (F(2)/MathConstants<F>::pi) * atan(x * MathConstants<F>::halfPi); }
     
-    template<typename F> inline F processAtan (const F sample, const float (&coeffs)[maxCoeffs]) {
-        const auto& [drive, noName1, noName2, noName3, noName4, noName5, attenuation, blend] = coeffs;
-        const auto x { static_cast<float>(sample) };
-        return fastatan(x * (1.f + drive * 14.f)) * attenuation * blend + x * (1.f - blend);
-    }
-    
-    template<typename F> inline F crushSample (const F sample, const float (&coeffs)[maxCoeffs]) {
-        const auto& [drive, floor, max, noName3, noName4, noName5, attenuation, blend] = coeffs;
-        const auto x { static_cast<float>(sample) };
-        return (rround((x + 1.f) * max) / max - 1.f) * attenuation * blend + x * (1.f - blend);
-    }
-    
-    template<typename F> inline F deviateSample(const F sample, const float (&coeffs)[maxCoeffs]) {
-        const auto& [drive, gate, saturation, gateOffset, noName4, noName5, attenuation, blend] = coeffs;
-        const auto x { static_cast<float>(sample) };
-        return (-1.f - gateOffset + (2.f/(1.f + (1.f / gate) * powf(expf(-saturation * x),(drive))))) * attenuation * blend + x * (1.f - blend);
-    }
-    
-    template<typename Cs, typename F>
-    F shapeSample(const Cs& aC, const Cs& cC, const Cs& dC, F sample, F blend1 = 1.f, F blend2 = 1.f, F mag = 1.f) {
-        return blend1 * blend2 * mag * deviateSample(processAtan(crushSample(sample/mag, cC), aC), dC) + (F(1) - blend1 * blend2) * sample; }
-    
-    template<typename Cs, typename F>
-    void shapeSamples(const Cs& aC, const Cs& cC, const Cs& dC, F* samples, int len, F blend1 = 1.f, F blend2 = 1.f, F mag = 1.f) {
-        for (int i { 0 }; i <= len; ++i)
-            samples[i] = blend1 * blend2 * mag * deviateSample(processAtan(crushSample(samples[i]/mag, cC), aC), dC) + (F(1) - blend1 * blend2) * samples[i]; }
-    
-    template<typename F> struct Table {
-        static constexpr F zero { static_cast<F>(0) }, one { static_cast<F>(1) }, two { static_cast<F>(2) }, half { one / two };
-        F operator[](int idx) const { return table[idx]; }
-        F operator[](F sample) const {
-            F floatIndex { jlimit(zero, one, slope * sample + intercept) * waveLength };
-            auto i { truncatePositiveToUnsignedInt (floatIndex) };
-            F f { floatIndex - F (i) };
-            jassert (isPositiveAndNotGreaterThan (f, one));
-            F x0 { table[i] }, x1 { table[i + 1] };
-            return jmap (f, x0, x1); }
-        F* table { nullptr };
-        const F waveLength { WAVELENGTH }, slope { one }, intercept { zero };
+    struct Atan {
+        static inline void calculateCoefficients(float(& coeffs)[maxCoeffs]) {
+            auto& [drive, lo, hi, mDrive, noName4, mag, attenuation, blend] = coeffs;
+            mDrive = powf(drive/111.f, 2.f);
+            blend *= jlimit(0.f, 1.f, 4.f * drive / 111.f);
+            attenuation = jmap(powf(drive/111.f, 0.08f), 1.f, 0.14f); }
+        template<typename F> static inline F processSample(const F sample, const float (&coeffs)[maxCoeffs]) {
+            const auto& [drive, lo, hi, mDrive, noName4, mag, attenuation, blend] = coeffs;
+            const auto x { static_cast<float>(sample) };
+            return fastatan(x * (1.f + mDrive * 144.f)) * attenuation * blend + x * (1.f - blend); }
     };
     
-    struct TableManager {
-        using UM = UndoManager;
-        static constexpr int waveLength { WAVELENGTH }, gainLength { GAINLENGTH };
-        struct WaveTableData {
-            File getFile() const { return getSadisticFolder() + (builtIn ? "/Wave Tables/Stock/" : "/Wave Tables/User/") + id; }
-            String id; int index; int numSamples; bool builtIn; };
-        
-        TableManager(APVTS& a, std::atomic<int>* cI, float(& cS)[maxCoeffs][maxCoeffs][maxCoeffs], float* pF, double* pD) : apvts(a), ptDouble(pD), ptFloat(pF), coeffIdx(cI), coeffs(cS) {
-            for (size_t i { 0 }; i < Wave<float>::numWaves; ++i) {
-                String id { String(Wave<float>::waveID[i].data(), Wave<float>::waveID[i].size()) };
-                waveTableFiles.push_back({ id, static_cast<int>(i), waveLength + 1, true });
-                auto& t { tables.emplace_back(waveLength + 1, 0.f) };
-                Wave<float>::fillTable(t.data(), waveLength, Wave<float>::Type(i), true, true);
-            }
-            selectTable(1);
-            
-            for (size_t i { 0 }; i < sizeof(stockTables)/sizeof(WaveTableData); ++i) {
-                int dataSize { 0 };
-                const auto dataPtr { Data::getNamedResource(stockTables[i].id.toUTF8(), dataSize) };
-                WavAudioFormat format;
-                auto inputStream { MemoryInputStream(dataPtr, size_t(dataSize), true) };
-                auto* reader { format.createReaderFor(&inputStream, true) };
-                if (reader) {
-                    SamplerSound ss { {}, *reader, {}, 10, 10.0, 10.0, 10.0 };
-                    auto* bufferPtr { ss.getAudioData() };
-                    const auto numSamples { bufferPtr->getNumSamples() };
-                    auto& t { tables.emplace_back(size_t(numSamples), 0.f) };
-                    waveTableFiles.push_back({ stockTables[i].id.dropLastCharacters(4), int(Wave<float>::numWaves + i), int(numSamples/waveLength), true });
-                    auto* samples { bufferPtr->getReadPointer(0) };
-                    std::copy(samples, samples + numSamples, t.begin());
-                }
-            }
-        }
-        
-        WaveTableData stockTables[2] {
-            { "MATRIXYC64_wav", {}, {}, {} },
-            { "cycle2048_wav", {}, {}, {} } };
-        
-        template <typename F> void makeStaticTable(F* dest) {
-            const auto& atanCoeffs { coeffs[3][int(coeffIdx[3])] };
-            const auto& crusherCoeffs { coeffs[4][int(coeffIdx[4])] };
-            const auto& deviationCoeffs { coeffs[5][int(coeffIdx[5])] };
-            float blend { *apvts.getRawParameterValue("staticWaveShaperBlend") };
-            makeTable(atanCoeffs, crusherCoeffs, deviationCoeffs, waveTable, blend);
-            for (size_t i { 0 }; i <= size_t(gainLength); ++i) dest[i] = static_cast<F>(waveTable[i]);
-            newGUIDataHere = true;
-        }
-        
-        template <typename F> void makeDynamicTable() {
-            const auto& atanCoeffs { coeffs[0][int(coeffIdx[0])] };
-            const auto& crusherCoeffs { coeffs[1][int(coeffIdx[1])] };
-            const auto& deviationCoeffs { coeffs[2][int(coeffIdx[2])] };
-            float blend { *apvts.getRawParameterValue("dynamicWaveShaperBlend") };
-            makeTable(atanCoeffs, crusherCoeffs, deviationCoeffs, gainTable, blend);
-//            for (size_t i { 0 }; i <= size_t(gainLength); ++i) dest[i] = static_cast<F>(gainTable[i]);
-            newGUIDataHere = true;
-        }
-        
-        template<typename COEFFS, typename F>
-        void makeTable(const COEFFS& aC, const COEFFS& cC, const COEFFS& dC, F* table, float shaperBlend) {
-            for (int i { 0 }; i <= gainLength; ++i) {
-                const auto blend { static_cast<F>(shaperBlend * *apvts.getRawParameterValue("mainBlend")) };
-                const auto gainSample { static_cast<F>(-1.f + 2.f * float(i) / float(gainLength)) };
-                table[i] = blend * deviateSample(processAtan(crushSample(gainSample, cC), aC), dC) + (F(1) - blend) * gainSample;
-            }
-        }
-
-        bool loadTable(File inputFile) {
-            String fileName { inputFile.getFileName().removeCharacters(".wav") };
-            WavAudioFormat format;
-            auto inputStream { FileInputStream(inputFile) };
-            auto* reader { format.createReaderFor(&inputStream, true) };
-            if (reader) {
-                SamplerSound ss { {}, *reader, {}, 10, 10.0, 10.0, 10.0 };
-                auto* bufferPtr { ss.getAudioData() };
-                const auto numSamples { bufferPtr->getNumSamples() };
-                const int newIndex { static_cast<int>(tables.size()) };
-                auto& t { tables.emplace_back(size_t(numSamples), 0.f) };
-                waveTableFiles.push_back({ fileName, newIndex, numSamples/waveLength, true });
-                auto* samples { bufferPtr->getReadPointer(0) };
-                std::copy(samples, samples + numSamples, t.begin());
-                selectTable(size_t(newIndex));
-                return true;
-            }
-            return false;
-        }
-
-        template<typename F> void getTable(const Identifier& id, F* samples, int numSamples) const {
-            if (id == waveTableID) for (int i { 0 }; i < numSamples; ++i) samples[i] = static_cast<F>(waveTable[i]);
-            if (id == gainTableID) for (int i { 0 }; i < numSamples; ++i) samples[i] = static_cast<F>(gainTable[i]);
-            else if (id == phaseTableID) {
-                for (int i { 0 }; i < numSamples; ++i) samples[i] = F(currentPhaseTable[(size_t) i]);
-            }
-        }
-        
-        bool saveTable() {
-            const float idxFloat { *apvts.getRawParameterValue("waveTableID") };
-            const size_t idx { static_cast<size_t>(idxFloat) };
-            auto& table { tables[idx] };
-            const int numSamples { static_cast<int>(table.size()) };
-            float* mockChannel[1] { table.data() };
-            const AudioBuffer<float> buffer { mockChannel, 1, numSamples };
-            File file { waveTableFiles[idx].getFile() };
-            return saveTable(file, buffer);
-        }
-        
-        bool saveTable(File& outputFile) {
-            const int numSamples { static_cast<int>(currentPhaseTable.size()) };
-            float* mockChannel[1] { currentPhaseTable.data() };
-            const AudioBuffer<float> buffer { mockChannel, 1, numSamples };
-            return saveTable(outputFile, buffer);
-        }
-        
-        bool saveTable(File& outputFile, const AudioBuffer<float>& buffer) {
-            StringPairArray metadataValues = WavAudioFormat::createBWAVMetadata ("Custom WaveTable", "originator", "originatorRef", Time::getCurrentTime(), buffer.getNumChannels(), "codingHistory");
-            std::unique_ptr<juce::FileOutputStream> outStream;
-            outStream = outputFile.createOutputStream();
-            juce::WavAudioFormat format;
-            std::unique_ptr<juce::AudioFormatWriter> writer;
-            writer.reset(format.createWriterFor(outStream.get(), 44100.0, uint32(buffer.getNumChannels()), 32, metadataValues, 0));
-            
-            if (writer != nullptr) {
-                outStream.release();
-                if (writer->writeFromAudioSampleBuffer (buffer, 0, buffer.getNumSamples())) return true;
-            }
-            return false;
-        }
-
-        void selectTable(size_t idx) {
-            currentPhaseTable = tables[idx];
-            std::copy(currentPhaseTable.begin(), currentPhaseTable.begin() + waveLength + 1, ptFloat);
-            for (size_t i { 0 }; i <= size_t(waveLength); ++i) ptDouble[i] = static_cast<double>(currentPhaseTable[i]);
-        }
-        
-        int getTableLength(const Identifier& identifier) {
-            if (identifier == waveTableID || identifier == gainTableID)
-                return gainLength + 1;
-            else return static_cast<int>(currentPhaseTable.size());
-        }
-        APVTS& apvts;
-        static inline const Identifier waveTableID { "waveTable" }, gainTableID { "gainTable" }, phaseTableID { "phaseTable" };
-        std::vector<float> currentPhaseTable;
-        WaveTableData* currentPhaseTableData;
-        float waveTable[gainLength + 1], gainTable[gainLength + 1];
-        double* ptDouble;
-        float* ptFloat;
-        std::atomic<bool> newGUIDataHere { true };
-        std::vector<WaveTableData> waveTableFiles;
-        std::vector<std::vector<float>> tables;
-        std::atomic<int>* coeffIdx;
-        float(& coeffs)[maxCoeffs][maxCoeffs][maxCoeffs];
+    struct Crusher {
+        static inline void calculateCoefficients(float(& coeffs)[maxCoeffs]) {
+            auto& [drive, lo, hi, mDrive, max, mag, attenuation, blend] = coeffs;
+            mDrive = powf(((drive * 0.75f)/111.f) * 0.75f - 1.f, 16.f) * 1024.f + 1.f;
+//            blend *= jlimit(0.f, 1.f, 4.f * drive / 111.f);
+            max = 1.f;
+            mag = 1.f;
+            attenuation = 1.f - 0.3f * (drive/111.f); }
+        template<typename F> static inline F processSample(const F sample, const float (&coeffs)[maxCoeffs]) {
+            const auto& [drive, lo, hi, mDrive, max, mag, attenuation, blend] = coeffs;
+            const auto x { static_cast<float>(sample) };
+            return (rround((x + 1.f) * mDrive) / mDrive - 1.f) * attenuation * blend + x * (1.f - blend); }
     };
+    
+    struct Clipper {
+        static inline void calculateCoefficients(float(& coeffs)[maxCoeffs]) {
+            auto& [drive, lo, hi, mDrive, noName4, mag, attenuation, blend] = coeffs;
+            mDrive = powf(drive/111.f, 2.f);
+//            blend *= jlimit(0.f, 1.f, 4.f * drive / 111.f);
+            attenuation = jmap(powf(mDrive, 0.04f), 1.f, 0.14f); }
+        template<typename F> static inline F processSample(const F sample, const float (&coeffs)[maxCoeffs]) {
+            const auto& [drive, lo, hi, mDrive, noName4, mag, attenuation, blend] = coeffs;
+            const auto x { static_cast<float>(sample) };
+            return jlimit(-1.f, 1.f, x * (1.f + mDrive * 144.f)) * attenuation * blend + x * (1.f - blend); }
+    };
+    
+    struct Deviation {
+        static inline void calculateCoefficients(float(& coeffs)[maxCoeffs]) {
+            auto& [drive, lo, hi, mDrive, noName4, mag, attenuation, blend] = coeffs;
+            mDrive = sadSymmetricSkew(drive/111.f, -0.96f);
+//            blend *= jlimit(0.f, 1.f, 4.f * drive / 111.f);
+            attenuation = jmap(powf(drive/111.f * 0.5f, 0.1f), 1.f, 0.03f); }
+        template<typename F> static inline F processSample(const F sample, const float (&coeffs)[maxCoeffs]) {
+            const auto& [drive, lo, hi, mDrive, noName4, mag, attenuation, blend] = coeffs;
+            const auto x { static_cast<float>(sample) };
+            return (-1.f + (2.f/(1.f + 1.f * powf(FastMathApproximations::exp(-2.f * x), 1.f + mDrive * 3000.f)))) * attenuation * blend + x * (1.f - blend); }
+    };
+    
+    struct Hyperbolic {
+        static inline void calculateCoefficients(float(& coeffs)[maxCoeffs]) {
+            auto& [drive, lo, hi, mDrive, noName4, mag, attenuation, blend] = coeffs;
+            mDrive = drive/111.f;
+//            blend *= jlimit(0.f, 1.f, 4.f * drive / 111.f);
+            attenuation = jmap(powf(drive/111.f, 0.08f), 1.f, 0.14f); }
+        template<typename F> static inline F processSample(const F sample, const float (&coeffs)[maxCoeffs]) {
+            const auto& [drive, lo, hi, mDrive, noName4, mag, attenuation, blend] = coeffs;
+            const auto x { static_cast<float>(sample) };
+            return FastMathApproximations::tanh(x * (1.f + powf(mDrive, 2.f) * 144.f)) * attenuation * blend + x * (1.f - blend); }
+    };
+    
+    template<typename Cs, typename F>
+    inline F shapeSample(const Cs& aC, const Cs& bC, const Cs& cC, const Cs& dC, const Cs& hC, F sample, F blend = 1.f) {
+        return blend * Hyperbolic::processSample(Clipper::processSample(Deviation::processSample(Atan::processSample(Crusher::processSample(sample, bC), aC), dC), cC), hC) + (F(1) - blend) * sample; }
     
     struct DeviantEffect {
-        DeviantEffect(String eID, ParamList refs, FloatParamList floatRefs, int eIDX, TableManager& t) : mgmt(t), effectID(eID), shaperType(eID.contains("static") ? staticIdentifier : eID.contains("dynamic") ? dynamicIdentifier : neitherIdentifier), effectIndex(eIDX), defaults(refs), params(floatRefs) {}
-        DeviantEffect(DeviantEffect& other) : mgmt(other.mgmt), effectID(other.effectID), shaperType(other.effectID.contains("static") ? staticIdentifier : other.effectID.contains("dynamic") ? dynamicIdentifier : neitherIdentifier), effectIndex(other.effectIndex), defaults(other.defaults), params(other.params) {}
+        DeviantEffect(String eID, ParamList refs, FloatParamList floatRefs, int eIDX) : effectID(eID), shaperType(eID.contains("static") ? IDs::staticIdentifier : eID.contains("dynamic") ? IDs::dynamicIdentifier : IDs::neitherIdentifier), effectIndex(eIDX), defaults(refs), params(floatRefs) {}
+        DeviantEffect(DeviantEffect& other) : effectID(other.effectID), shaperType(other.effectID.contains("static") ? IDs::staticIdentifier : other.effectID.contains("dynamic") ? IDs::dynamicIdentifier : IDs::neitherIdentifier), effectIndex(other.effectIndex), defaults(other.defaults), params(other.params) {}
         virtual ~DeviantEffect() {}
         bool operator<(const DeviantEffect& other) {
             if (getRoute() < other.getRoute()) return true;
@@ -338,8 +196,8 @@ namespace sadistic {
         virtual void prepare(const ProcessSpec&) {}
         virtual void processSamples(AudioBuffer<float>&) = 0;
         virtual void processSamples(AudioBuffer<double>&) = 0;
-        void process(AudioBuffer<float>& buffer) { if (isEnabled()) { cookParameters(); processSamples(buffer); } }
-        void process(AudioBuffer<double>& buffer) { if (isEnabled()) { cookParameters(); processSamples(buffer); } }
+        void process(AudioBuffer<float>& buffer) { if (isEnabled()) { if (parametersNeedCooking()) cookParameters(); processSamples(buffer); } }
+        void process(AudioBuffer<double>& buffer) { if (isEnabled()) { if (parametersNeedCooking()) cookParameters(); processSamples(buffer); } }
         virtual void reset() {}
         virtual void calculateCoefficients() {}
         virtual int getLatency() { return 0; }
@@ -347,54 +205,146 @@ namespace sadistic {
         int getRoute() const     { return static_cast<AudioParameterInt&>(defaults[1].get()).get(); }
         int getIndex() const     { return static_cast<AudioParameterInt&>(defaults[2].get()).get(); }
         float getBlend() const   { return static_cast<AudioParameterFloat&>(defaults[3].get()).get(); }
-        void init() {
+        virtual void init() {
             for (size_t i { 0 }; i < params.size(); ++i) coeffs[i] = params[i].get().get();
+            coeffs[4] = 1.f;
+            coeffs[5] = 1.f;
             coeffs[7] = getBlend();
             calculateCoefficients();
             cookParameters();
         }
-        bool cookParameters() {
-            bool stillUpdating { false };
+        bool parametersNeedCooking() const {
+            bool needsUpdate { false };
+            for (size_t i { 0 }; i < params.size(); ++i) if (coeffs[i] != params[i].get().get()) needsUpdate = true;
+            if (coeffs[7] != getBlend()) needsUpdate = true;
+            return needsUpdate;
+        }
+        void cookParameters() {
             for (size_t i { 0 }; i < params.size(); ++i) {
                 const float currentValue { params[i].get().get() };
                 const float smoothed { coeffs[i] };
                 if (currentValue != smoothed) {
-                    const float maxDelta { (params[i].get().getNormalisableRange().end - params[i].get().getNormalisableRange().start) / 20.f };
+                    const float maxDelta { (params[i].get().getNormalisableRange().end - params[i].get().getNormalisableRange().start) / maxDeltaDivisor };
                     coeffs[i] = jlimit(smoothed - maxDelta, smoothed + maxDelta, currentValue);
-                    stillUpdating = true;
                 }
             }
             const float currentValue { getBlend() };
             const float smoothed { coeffs[7] };
             if (currentValue != smoothed) {
-                const float maxDelta { (defaults[3].get().getNormalisableRange().end - defaults[3].get().getNormalisableRange().start) / 20.f };
+                const float maxDelta { (defaults[3].get().getNormalisableRange().end - defaults[3].get().getNormalisableRange().start) / maxDeltaDivisor };
                 coeffs[7] = jlimit(smoothed - maxDelta, smoothed + maxDelta, currentValue);
-                stillUpdating = true;
             }
-            if (stillUpdating) calculateCoefficients();
-            return stillUpdating;
+            calculateCoefficients();
         }
-        TableManager& mgmt;
         String effectID;
         const Identifier& shaperType;
+        const float maxDeltaDivisor { 50.f };
         int effectIndex;
         ParamList defaults;
         FloatParamList params;
         float coeffs[maxCoeffs];
     };
     
+    struct TableManager {
+        using UM = UndoManager;
+        static constexpr int gainLength { GAINLENGTH };
+        
+        TableManager(APVTS& a, std::atomic<int>* cI, float(& cS)[numFX][maxCoeffs][maxCoeffs]) : apvts(a), coeffIdx(cI), coeffs(cS) {
+            for (int i { 0 }; i <= gainLength; ++i) inputTable[i] = -1.f + 2.f * float(i) / float(gainLength); }
+        
+        template <typename F> void makeStaticTable(F* dest = nullptr) {
+            const auto& atanCoeffs { coeffs[0][int(coeffIdx[0])] };
+            const auto& crusherCoeffs { coeffs[1][int(coeffIdx[1])] };
+            const auto& clipperCoeffs { coeffs[2][int(coeffIdx[2])] };
+            const auto& deviationCoeffs { coeffs[3][int(coeffIdx[3])] };
+            const auto& hyperbolicCoeffs { coeffs[4][int(coeffIdx[4])] };
+            makeTable(atanCoeffs, crusherCoeffs, clipperCoeffs, deviationCoeffs, hyperbolicCoeffs, gainTable);
+            if (dest) for (size_t i { 0 }; i <= size_t(gainLength); ++i) dest[i] = static_cast<F>(gainTable[i]);
+            int extremity;
+            const int indexOfMax { static_cast<int>(std::distance(gainTable,std::max_element(gainTable, gainTable + gainLength + 1))) };
+            const int indexOfMin { static_cast<int>(std::distance(gainTable,std::min_element(gainTable, gainTable + gainLength + 1))) };
+            if(abs(gainTable[indexOfMax]) > abs(gainTable[indexOfMin])) extremity = indexOfMax;
+            else extremity = indexOfMin;
+            const auto mag { abs(gainTable[extremity]) }, magDB { Decibels::gainToDecibels(mag) }, mult { 1.f - -magDB/100.f };
+            waveMult = powf(mult, 7.f);
+            newGUIDataHere = true;
+        }
+        
+        template<typename COEFFS, typename F>
+        void makeTable(const COEFFS& aC, const COEFFS& bC, const COEFFS& cC, const COEFFS& dC, const COEFFS& hC, F* table, float shaperBlend = 1.f) {
+            const auto blend { static_cast<F>(shaperBlend) };
+            for (int i { 0 }; i <= gainLength; ++i) {
+                const auto gainSample { static_cast<F>(-1.f + 2.f * float(i) / float(gainLength)) };
+                table[i] = blend * shapeSample(aC, bC, cC, dC, hC, gainSample) + (F(1.0) - blend) * gainSample;
+//                table[i] = blend * Clipper::processSample(Deviation::processSample(Atan::processSample(gainSample, aC), dC), cC) + (F(1.0) - blend) * gainSample;
+            }
+        }
+        
+        APVTS& apvts;
+        float inputTable[gainLength + 1], gainTable[gainLength + 1];
+        float waveMult { 1.f };
+        std::atomic<bool> newGUIDataHere { true };
+        std::atomic<int>* coeffIdx;
+        float(& coeffs)[numFX][maxCoeffs][maxCoeffs];
+    };
+    
     ////////////////     GRAPHICS      ////////////////////////////////////////////////////////
 
-    struct EmpiricalLAF    : public LookAndFeel_V4   {
-        static constexpr auto numNumbers { 12 }, numNeedles { 112 };
-        void drawRotarySlider (Graphics& g, int x, int y, int width, int height, float sliderPos,
-                               float rotaryStartAngle, float rotaryEndAngle, Slider& slider) override;
-        void drawLinearSlider (Graphics& g, int x, int y, int width, int height, float sliderPos, float minSliderPos, float maxSliderPos, const Slider::SliderStyle style, Slider& slider) override; };
+    struct DeviantSlider : public Slider   {
+        void mouseEnter(const MouseEvent&) override { showMouseOver(); repaint(); }
+        void mouseExit(const MouseEvent&) override { hideMouseOver(); repaint(); }
+        void setMouseOverLabels(String left, String right) { mouseOverLeft = left; mouseOverRight = right; }
+        String mouseOverLeft, mouseOverRight;
+        std::function<void ()> showMouseOver { []{} }, hideMouseOver { []{} };
+    };
     
-    struct LeftEmpiricalLAF : EmpiricalLAF { void drawLabel (Graphics& g, Label& label) override; };
-    struct RightEmpiricalLAF : EmpiricalLAF { void drawLabel (Graphics& g, Label& label) override; };
-    struct EmpiricalSlider : public Slider   {
-        static constexpr int numNumbers { EmpiricalLAF::numNumbers }, numNeedles { EmpiricalLAF::numNeedles };
+    struct FilterKnob : public DeviantSlider   {
+        FilterKnob(const char* svg) : icon(makeIcon(svg)) {
+            icon->replaceColour(Colours::blue, Colours::blue.withAlpha(0.f));
+            setColour(Colours::grey.darker());
+        }
+        void setColour(Colour c) { icon->replaceColour(colour, c); colour = c; }
+        void mouseEnter(const MouseEvent& e) override { setColour(Colours::white.darker()); DeviantSlider::mouseEnter(e);; }
+        void mouseExit(const MouseEvent& e) override { setColour(Colours::grey.darker()); DeviantSlider::mouseExit(e); }
+        void setMouseOverLabels(String left, String right) { mouseOverLeft = left; mouseOverRight = right; }
+        std::unique_ptr<Drawable> icon;
+        Colour colour { Colours::black };
+    };
+    
+    template <typename T> String freqStringInt(T i) {
+        if (i > 1001) {
+            int first =(int)(i / 1000);
+            auto remainder = i - first * 1000;
+            if (i > 10000 || (int)(i / 1000) == (float) i / 1000.f) return String(String(i).dropLastCharacters(3)+ "K");
+            else return String(String(i).dropLastCharacters(3)+ "." + String(remainder).dropLastCharacters(2) + "K");
+        }
+        else return String(i);
+    }
+    
+    template <typename FloatType> String freqString(FloatType i) {
+        String returnString = String();
+        if (i < 10.0) returnString = String(i,2);
+        else if (i < 1000.0) returnString = String(i,1).dropLastCharacters(2);
+        else returnString = freqStringInt(static_cast<int>(i));
+        return returnString;
+    }
+    struct EmpiricalLAF    : public LookAndFeel_V4   {
+        EmpiricalLAF() {
+            const char* nums[numNumbers] { Data::zero_svg, Data::one_svg, Data::two_svg, Data::three_svg, Data::four_svg, Data::five_svg, Data::six_svg, Data::seven_svg, Data::eight_svg, Data::nine_svg, Data::zero_svg, Data::one_svg };
+            for (auto& one : onesPlaceNums) { one = makeIcon(Data::zero_svg); one->replaceColour(Colours::black, Colours::white); }
+            for (int i { 0 }; i < numNumbers; ++i) { tensPlaceNums[i] = makeIcon(nums[i]); tensPlaceNums[i]->replaceColour(Colours::black, Colours::white); }
+            hundredsPlaceNums[0] = makeIcon(Data::one_svg); hundredsPlaceNums[0]->replaceColour(Colours::black, Colours::white);
+            hundredsPlaceNums[1] = makeIcon(Data::one_svg); hundredsPlaceNums[1]->replaceColour(Colours::black, Colours::white);
+        }
+        static constexpr auto numNumbers { 12 }, numNeedles { 112 };
+        void drawRotarySlider (Graphics&, int, int, int, int, float, float, float, Slider&) override;
+        std::unique_ptr<Drawable> onesPlaceNums[numNumbers], tensPlaceNums[numNumbers], hundredsPlaceNums[2];
+    };
+    struct FilterLAF    : public LookAndFeel_V4   {
+        void drawRotarySlider (Graphics&, int, int, int, int, float, float, float, Slider&) override;
+        void drawLinearSlider (Graphics&, int, int, int, int, float, float, float, const Slider::SliderStyle, Slider&) override; };
+
+    struct EmpiricalSlider : public DeviantSlider   {
         EmpiricalSlider(bool l = false, bool s = false, bool h = false) : isLeft(l), isSmall(s), isDefaultHigh(h) {}
         float getNormalisedValue() {
             auto range { NormalisableRange<double>(getRange()) };
@@ -416,12 +366,19 @@ namespace sadistic {
     void hideValue(Label& valueLabel, Component& child);
     void showIntegerValue(Slider& slider, Label& label1, Label& label2);
     void showLevelValue(Slider& slider, Label& label1, Label& label2);
+    template <typename SliderType> void setMouseOverLabels(SliderType& slider, String left, String right) {
+        slider.setMouseOverLabels(left, right); }
+    template <typename SliderType> void showMouseOverLabels(SliderType& slider, Label& label1, Label& label2) {
+        label1.setText (slider.mouseOverLeft, dontSendNotification);
+        label2.setText (slider.mouseOverRight, dontSendNotification); }
+    template <typename SliderType> void hideMouseOverLabels(SliderType&, Label& label1, Label& label2) {
+        label1.setText ("", dontSendNotification);
+        label2.setText ("", dontSendNotification); }
+    template <typename SliderType> void showHzValue(SliderType& slider, Label& label1, Label& label2) {
+        label1.setText (String(freqString(slider.getValue()) + "Hz"), dontSendNotification);
+        label2.setText (slider.getTextValueSuffix(), dontSendNotification);
+    }
 
-    struct DeviantScreen : Component {
-        static constexpr int gainLength { GAINLENGTH }, scopeSize { SCOPESIZE }, waveLength { WAVELENGTH };
-        DeviantScreen(TableManager& h) : mgmt(h) {}
-        TableManager& mgmt;
-    };
     struct SadButton : public Button {
         SadButton(bool iL = false) : Button("displays"), isLeft(iL) {}
         void mouseEnter(const MouseEvent&) override {
@@ -479,10 +436,12 @@ namespace sadistic {
         }
         void mouseEnter(const MouseEvent&) override {
             colour = Colours::white.darker();
+            label.label.setColour(Label::backgroundColourId, colour);
             repaint();
         }
         void mouseExit(const MouseEvent&) override {
             colour = Colours::grey;
+            label.label.setColour(Label::backgroundColourId, colour);
             repaint();
         }
         void resized() override {
@@ -495,58 +454,19 @@ namespace sadistic {
         const bool isLeft;
     };
     
-    struct SadBox : ComboBox {
-        SadBox(String name, TableManager& m) : ComboBox(name), mgmt(m) {
-            auto* menu { getRootMenu() };
-            size_t i { 1 };
-            for (; i < mgmt.waveTableFiles.size(); ++i) {
-                PopupMenu::Item item { mgmt.waveTableFiles[i].id.toUTF8() };
-                item.itemID = int(i);
-                item.action = { [=]{ pickTable(i); } };
-                menu->addItem(item);
-            }
-            PopupMenu::Item itemLoad { "Load Table" };
-            itemLoad.itemID = int(i++);
-            itemLoad.action = { [&,this](){ loadFile(); } };
-            menu->addItem(itemLoad);
-            PopupMenu::Item itemSave { "Load Table" };
-            itemSave.itemID = int(i++);
-            itemSave.action = { [&,this](){ saveFile(); } };
-            menu->addItem(itemSave);
-            saveCallback = [&,this] (const FileChooser& chooser) {
-                auto result { chooser.getResult() };
-                if(mgmt.saveTable(result)) juce::AlertWindow::showMessageBoxAsync (AlertWindow::InfoIcon, "Table Saved...", ""); };
-            saveFile = [&,this](){
-                fc = std::make_unique<FileChooser>("Save Wave Table", File(), "*.wav");
-                fc->launchAsync (FileBrowserComponent::saveMode |
-                                 FileBrowserComponent::canSelectFiles |
-                                 FileBrowserComponent::warnAboutOverwriting |
-                                 FileBrowserComponent::doNotClearFileNameOnRootChange,
-                                 saveCallback); };
-            loadCallback = [&,this] (const FileChooser& chooser) {
-                if (!chooser.getResults().isEmpty()) {
-                    if (mgmt.loadTable(chooser.getResult()))
-                        juce::AlertWindow::showMessageBoxAsync (AlertWindow::InfoIcon, "Table Loaded", "!");
-                    else juce::AlertWindow::showMessageBoxAsync (AlertWindow::WarningIcon, "File not loaded correctly", "!");
-                }
-                else juce::AlertWindow::showMessageBoxAsync (AlertWindow::WarningIcon, "File not choosen correctly", "!"); };
-            loadFile = [&,this](){
-                fc = std::make_unique<FileChooser>("Load Wave Table (.wav)", File(), "*.wav");
-                fc->launchAsync (FileBrowserComponent::openMode |
-                                 FileBrowserComponent::canSelectFiles,
-                                 loadCallback); };
+    struct RightClickMenu : PopupMenu {
+        RightClickMenu() {
+            PopupMenu::Item itemLoad { "Show Info On Mouse-Over" };
+            itemLoad.action = { [&] { toggleMouseOverEnabled(); } };
+            addItem(itemLoad);
+            PopupMenu::Item itemSave { "Show Extra Controls" };
+            itemSave.action = { [&,this] { toggleControls(); } };
+            addItem(itemSave);
         }
-        void pickTable(size_t idx) {
-            mgmt.apvts.getParameter("mainWaveTableID")->setValue(int(idx));
-            mgmt.selectTable(idx);
-            auto* parent { getParentComponent() };
-            parent->repaint();
-        }
-        TableManager& mgmt;
-        std::unique_ptr<FileChooser> fc;
-        std::function<void()> loadFile, saveFile;
-        std::function<void(int)> selectTable;
-        std::function<void (const FileChooser&)> loadCallback, saveCallback;
+        void show(Component* comp) {
+            PopupMenu::Options options;
+            PopupMenu::showMenuAsync(options.withTargetComponent(comp)); }
+        std::function<void()> toggleMouseOverEnabled, toggleControls;
     };
 }
 

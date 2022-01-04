@@ -1,5 +1,5 @@
 #pragma once
-#include "../../Source/sadistic.h"
+//#include "sadistic.h"
 #include "shaders.h"
 
 namespace sadistic {
@@ -27,7 +27,6 @@ namespace sadistic {
         void resized() override { getMatrix(); }
         
         void newOpenGLContextCreated() override {
-            Image image { ImageFileFormat::loadFrom (Data::moonStrip_png, Data::moonStrip_pngSize) };
             moonTexture.loadImage(ImageFileFormat::loadFrom (Data::moonStrip_png, Data::moonStrip_pngSize));
             moonShader = std::make_unique<OpenGLShaderProgram> (openGLContext);
             if (moonShader->addVertexShader (moonVertexShader) &&
@@ -35,24 +34,15 @@ namespace sadistic {
                 moonShader->addFragmentShader (moonFragmentShader) &&
                 moonShader->link()) {
                 moonShader->use();
-                for (auto& u : mUniforms.data) {
-                    u.id = openGLContext.extensions.glGetUniformLocation (moonShader->getProgramID(), u.key.toRawUTF8());
-                    u.ptr = std::make_unique<OpenGLShaderProgram::Uniform>(*moonShader, u.key.toRawUTF8());
-                }
-                
+                for (auto& u : mUniforms.data) u.ptr = std::make_unique<OpenGLShaderProgram::Uniform>(*moonShader, u.key.toRawUTF8());
             }
-            
             waveShader = std::make_unique<OpenGLShaderProgram> (openGLContext);
             if (waveShader->addVertexShader (waveVertexShader) &&
                 waveShader->addShader (waveGeometryShader, 0x8DD9) &&
                 waveShader->addFragmentShader (waveFragmentShader) &&
                 waveShader->link()) {
                 waveShader->use();
-                for (auto& u : wUniforms.data) {
-                    u.id = openGLContext.extensions.glGetUniformLocation (waveShader->getProgramID(), u.key.toRawUTF8());
-                    u.ptr = std::make_unique<OpenGLShaderProgram::Uniform>(*waveShader, u.key.toRawUTF8());
-                }
-                
+                for (auto& u : wUniforms.data) u.ptr = std::make_unique<OpenGLShaderProgram::Uniform>(*waveShader, u.key.toRawUTF8());
             }
             for (GLuint signal = 0; signal < numSignals; ++signal)  openGLContext.extensions.glGenBuffers (1, &vbo[signal]);
         }
@@ -69,14 +59,17 @@ namespace sadistic {
             openGLContext.extensions.glActiveTexture (GL_TEXTURE0);
             glEnable (GL_TEXTURE_2D);
             
-            float blend = powf(*apvts.getRawParameterValue("mainBlend"), 0.5f);
+            const float mainBlend { *apvts.getRawParameterValue("mainBlend") };
             float wtPosition = 0.f;
             
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRROR_CLAMP_TO_BORDER_EXT);
             moonTexture.bind();
             
             for (GLuint signal = 0; signal < numSignals; ++signal) {
                 getNewScopeData(signal);
-                if(signal == drySignal) { blend = 1.f - blend; wtPosition = 0.f; }
+                const float blend { powf(signal == drySignal ? 1.f - mainBlend : mainBlend, 0.75f) };
                 Colour c = colour[signal];
                 openGLContext.extensions.glBindBuffer (GL_ARRAY_BUFFER, vbo[signal]);
                 openGLContext.extensions.glBufferData (GL_ARRAY_BUFFER, sizeof(vertices[signal]), vertices[signal], GL_STREAM_DRAW);
@@ -122,7 +115,6 @@ namespace sadistic {
             const auto frame { scopeBuffer[signal].getFrameToRead() };
             if (frame) {
                 //set wave vertex data
-                rms[signal] = Wave<float>::getRMS(frame, scopeSize);
                 for (GLuint i = 0; i < (scopeSize-1); ++i) {
                     vertices[signal][i*3].position[1] = frame[i]/2.f;
                     vertices[signal][i*3+2].position[1] = frame[(i+1)]/2.f;
@@ -132,7 +124,6 @@ namespace sadistic {
         }
         
     private:
-        
         APVTS& apvts;
         OpenGLContext openGLContext;
         GLuint vbo[numSignals];
@@ -141,8 +132,7 @@ namespace sadistic {
         struct Vertex { float position[4] { 0.f, 0.f, 0.f, 1.f }; };
         Vertex vertices[numSignals][(scopeSize-1)*3];
         OpenGLTexture moonTexture;
-        float rms[numSignals]{};
-        Colour colour[numSignals] { Colour::fromFloatRGBA(0.f, 1.f, 1.f, 1.f), Colour::fromFloatRGBA(0.7f, 1.f, 0.2f, 1.f) };
+        const Colour colour[numSignals] { wetSignalColour, drySignalColour };
         ScopeBuffer(& scopeBuffer)[numSignals];
         Matrix3D<float> matrix;
         
