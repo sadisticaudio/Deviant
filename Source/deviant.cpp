@@ -122,12 +122,11 @@ void sadistic::EmpiricalLAF::drawRotarySlider (Graphics& g, int x, int y, int wi
     }
 }
 
-void sadistic::FilterLAF::drawRotarySlider (Graphics& g, int x, int y, int, int, float sliderPos,
-                                               float rotaryStartAngle, float rotaryEndAngle, Slider& slider) {
+void sadistic::FilterLAF::drawRotarySlider (Graphics& g, int x, int y, int, int, float sliderPos, float rotaryStartAngle, float rotaryEndAngle, Slider& slider) {
     auto& fKnob { static_cast<sadistic::FilterKnob&>(slider) };
     auto& icon { fKnob.icon };
     const auto colour { fKnob.colour };
-    auto bounds = fKnob.getLocalBounds().toFloat();
+    auto bounds = slider.getLocalBounds().toFloat();
     auto toAngle = rotaryStartAngle + sliderPos * (rotaryEndAngle - rotaryStartAngle);
     auto transform = juce::AffineTransform:: rotation (toAngle, bounds.getCentreX(), bounds.getCentreY());
     icon->setTransformToFit (bounds.toFloat(), RectanglePlacement::centred);
@@ -140,8 +139,7 @@ bool sadistic::EmpiricalSlider::hitTest (int x, int y)    {
     auto centre = Point<int>(getLocalBounds().getCentre());
     return centre.getDistanceFrom({ x, y }) < getWidth()/2;};
 
-bool sadistic::TransLabel::hitTest (int x, int y)    {
-    return x<1 && y<1;};
+bool sadistic::TransLabel::hitTest (int x, int y) { return x<1 && y<1; };
 
 void sadistic::showEmpiricalValue(Slider& slider, Label& valueLabel, Component& child) {
     valueLabel.setText (String(roundToInt(std::pow((slider.getValue() - slider.getMinimum()) / (slider.getMaximum() - slider.getMinimum()),1.01 * slider.getSkewFactor()) * (111.00))), dontSendNotification);

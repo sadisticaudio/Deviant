@@ -3,12 +3,13 @@
 
 namespace sadistic {
     
+    //represents members of our derived AudioProcessor class which are templated on float or double precision processing
     template <typename FloatType>
     struct DeviantMembers {
         static constexpr int bufferLength { BUFFERLENGTH };
         
-        //Constructor for FX: emplaces references of their associated parameters into a vector member variable
-        //while adding them to the APVTS, idea stolen from DSPModulePluginDemo. thank you Reuk, Ed, Tom, and Ivan!!!
+        //Constructor for FX: emplaces references of their associated parameters into a vector member variable while
+        //also adding them to the APVTS, idea stolen from THE AMAZING DSPModulePluginDemo. thank you Reuk, Ed, Tom, and Ivan!!!
         DeviantMembers(APVTS::ParameterLayout& layout, std::atomic<int>* cI, float(& cS)[numFX][maxCoeffs][maxCoeffs]) :
         atan(createEffect<Shaper<Atan, FloatType>>(layout, 0, cI[0], cS[0])),
         crusher(createEffect<Shaper<Crusher, FloatType>>(layout, 1, cI[1], cS[1])),
@@ -35,8 +36,7 @@ namespace sadistic {
             for (auto* fx : effects) fx->reset();
             resetAll(blendDelay); }
         
-        void prepare(const ProcessSpec& processSpec) {
-            const ProcessSpec spec { processSpec.sampleRate, uint32(bufferLength), processSpec.numChannels };
+        void prepare(const ProcessSpec& spec) {
             blendDelay.setDelay(getLatency());
             blendBuffer.setSize((int)spec.numChannels, bufferLength);
             xBuffer.setSize((int)spec.numChannels, bufferLength);
@@ -91,7 +91,7 @@ namespace sadistic {
                 }
             }
             
-            //make a copy of the buffer in order to push it through the fx again if the params have changed and return their delay lines and filters to the state they started at... not efficient I'm sure but it is a sure way to keep clicks and pops from creeping into the output buffer no matter what happens and copying is cheap!
+            //make a copy of the buffer in order to push it through the fx again if the params have changed and return their delay lines and filters to the state they started at. this not efficient but it is a sure way to keep clicks and pops from creeping into the output buffer no matter what happens... and copying is cheap!
             lastBuffer.makeCopyOf(buffer);
 
             //copy what's in our buffer to our blend buffer, delaying the blendBuffer by the total latency
@@ -99,7 +99,7 @@ namespace sadistic {
             
             AudioBlock<FloatType> block { buffer }, blendBlock { blendBuffer };
 
-            for (int i { 0 }; i < numFX; ++i) effects[i]->process(buffer);
+            if (!bypassed) for (int i { 0 }; i < numFX; ++i) effects[i]->process(buffer);
             
             if (paramsAreChanging) {
                 buffer.applyGainRamp(0, buffer.getNumSamples(), FloatType(0.0), FloatType(1.0));

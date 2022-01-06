@@ -25,25 +25,30 @@ namespace sadistic {
             void analyze(const double sampleRate) {
                 auto aBuf { scopeFifo.getBlock() };
                 auto currentWave { rendererBuffer.getBlankFrame() };
-                if(aBuf[0] != 0.f && aBuf[fifoSize-1] !=0.f && currentWave != nullptr) {
-                    float waveLengthInSamples { ((float)sampleRate / 666.f) };
-                    float numberOfCycles { 8.f };
-                    const int waveDisplayLength { jlimit(10, 6000, static_cast<int>(waveLengthInSamples * numberOfCycles)) };
-                    float speedRatio { (float)waveDisplayLength / 258.f };
-                    
-//                    const auto minMax { std::minmax_element(aBuf, aBuf + fifoSize) };
-                    const int indexOfMax { static_cast<int>(std::distance(aBuf,std::max_element(aBuf, aBuf + fifoSize))) };
-                    const int indexOfMin { static_cast<int>(std::distance(aBuf,std::min_element(aBuf, aBuf + fifoSize))) };
+                if (currentWave) {
+                    if(!std::all_of(aBuf, aBuf + fifoSize, [](float sample){ return sample == 0.f; })) {
+                        float waveLengthInSamples { ((float)sampleRate / 666.f) };
+                        float numberOfCycles { 8.f };
+                        const int waveDisplayLength { jlimit(10, 6000, static_cast<int>(waveLengthInSamples * numberOfCycles)) };
+                        float speedRatio { (float)waveDisplayLength / 258.f };
+                        
+    //                    const auto minMax { std::minmax_element(aBuf, aBuf + fifoSize) };
+                        const int indexOfMax { static_cast<int>(std::distance(aBuf,std::max_element(aBuf, aBuf + fifoSize))) };
+                        const int indexOfMin { static_cast<int>(std::distance(aBuf,std::min_element(aBuf, aBuf + fifoSize))) };
 
-                    if(abs(aBuf[indexOfMax]) > abs(aBuf[indexOfMin])) extremity = indexOfMax;
-                    else extremity = indexOfMin;
-                    const auto mag { abs(aBuf[extremity]) }, magDB { Decibels::gainToDecibels(mag) }, mult { 1.f - -magDB/100.f };
-                    
-                    const int startIndex = fifoSize - ((waveDisplayLength * 3) / 2 + 1);
-                    interpolator.process(jlimit(20.f / 256.f, (float)(fifoSize - ((size_t)waveDisplayLength + 1) / 256.f), speedRatio), aBuf + startIndex, scopeData, scopeSize+2);
+                        if(abs(aBuf[indexOfMax]) > abs(aBuf[indexOfMin])) extremity = indexOfMax;
+                        else extremity = indexOfMin;
+                        const auto mag { abs(aBuf[extremity]) }, magDB { Decibels::gainToDecibels(mag) }, mult { 1.f - -magDB/100.f };
+                        
+                        const int startIndex = fifoSize - ((waveDisplayLength * 3) / 2 + 1);
+                        interpolator.process(jlimit(20.f / 256.f, (float)(fifoSize - ((size_t)waveDisplayLength + 1) / 256.f), speedRatio), aBuf + startIndex, scopeData, scopeSize+2);
 
-                    for (int i = 0; i < scopeSize; ++i) currentWave[i] = scopeData[i+2] * 2.f * mult;
-                    rendererBuffer.setReadyToRender(currentWave);
+                        for (int i = 0; i < scopeSize; ++i) currentWave[i] = scopeData[i+2] * 2.f * mult;
+                        rendererBuffer.setReadyToRender(currentWave);
+                    }
+                    else {
+                        std::cout << "wtf";
+                    }
                 }
                 scopeFifo.finishedReading();
             }
