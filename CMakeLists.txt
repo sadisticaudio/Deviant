@@ -22,21 +22,23 @@ get_filename_component(CODE ../../ ABSOLUTE)
 #include_directories(${CODE}/SDKs/VST3_SDK/VST2_SDK)
 
 IF (WIN32)
-    set(AAX_COPY_LOCATION "C:/Program Files/Common Files/Avid/Audio/Plug-Ins")
+    set(JUCE_LOCATION "C:/Users/frye/Documents/JUCE")
     set(VST_COPY_LOCATION "C:/Program Files (x86)/Common Files/VST")
     set(VST3_COPY_LOCATION "C:/Program Files/Common Files/VST3")
+    set(VST2_SDK_LOCATION "C:/Users/frye/CODE/SDKs/VST3_SDK/VST2_SDK")
     set(AUDIO_PROJECTS_LOCATION "C:/Users/frye/Music/Projects")
-
 ELSE()
-    set(AAX_COPY_LOCATION "/Library/Application Support/Avid/Audio/Plug-Ins")
+    set(JUCE_LOCATION "$ENV{HOME}/Documents/JUCE")
     set(VST_COPY_LOCATION "/Library/Audio/Plug-Ins/VST")
     set(VST3_COPY_LOCATION "/Library/Audio/Plug-Ins/VST3")
-    set(AUDIO_PROJECTS_LOCATION "/Users/omar/Music/Projects/Reaper")
+    set(VST2_SDK_LOCATION "$ENV{HOME}/CODE/SDKs/VST3_SDK/VST2_SDK")
+    set(AUDIO_PROJECTS_LOCATION "$ENV{HOME}/Music/Projects/Reaper")
+    set(DEBUG_APP "/Applications/REAPER64.app")
+    set(DEBUG_ARGS "${AUDIO_PROJECTS_LOCATION}/DeviantTestRadiohead/DeviantTestRadiohead.RPP")
 ENDIF()
 
-add_subdirectory("$ENV{HOME}/Documents/JUCE" JUCE)
-juce_set_vst2_sdk_path($ENV{HOME}/CODE/SDKs/VST3_SDK/VST2_SDK)
-juce_set_aax_sdk_path($ENV{HOME}/CODE/SDKs/AAX_SDK)
+add_subdirectory(${JUCE_LOCATION} JUCE)
+juce_set_vst2_sdk_path(${VST2_SDK_LOCATION})
 juce_add_plugin(Deviant
     BUNDLE_ID "com.sadisticaudio.Deviant"
     PLUGIN_MANUFACTURER_CODE sTic
@@ -46,23 +48,20 @@ juce_add_plugin(Deviant
     COMPANY_COPYRIGHT "copyright Sadistic Algorithms, LLC, 2020"
     COMPANY_EMAIL "support@sadisticaudio.com"
     DOCUMENT_EXTENSIONS xml wav
-    FORMATS AU VST VST3 AAX
+    FORMATS AU VST VST3
     COPY_PLUGIN_AFTER_BUILD TRUE
     AU_COPY_DIR "/Library/Audio/Plug-Ins/Components"
-    AAX_COPY_DIR "${AAX_COPY_LOCATION}"
     VST_COPY_DIR "${VST_COPY_LOCATION}"
     VST3_COPY_DIR "${VST3_COPY_LOCATION}"
     HARDENED_RUNTIME_ENABLED TRUE
     IS_SYNTH FALSE
     EDITOR_WANTS_KEYBOARD_FOCUS FALSE
-    DESCRIPTION "Deviant Sidechain EQ"
+    DESCRIPTION "Deviant Waveshaper"
     VST2_CATEGORY kPlugCategEffect
     VST3_CATEGORIES Fx Analyzer EQ Filter
-    AU_MAIN_TYPE kAudioUnitType_Effect
-    AAX_CATEGORY AAX_ePlugInCategory_EQ)
+    AU_MAIN_TYPE kAudioUnitType_Effect)
 
 file(GLOB_RECURSE resources RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "Resources/*")
-file(GLOB_RECURSE bundle_resources RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "Resources/Deviant.xml")
 
 file(GLOB SourceFiles
     Source/*.h
@@ -78,22 +77,12 @@ source_group("JUCE Library Code" REGULAR_EXPRESSION "juce_")
 # It tucks the Plugin varieties into a "Targets" folder and generate an Xcode Scheme manually
 # since Xcode scheme generation is turned off to limit noise
 # Not all plugin types (au, vst) available on each build type (win, macos, linux)
-foreach(target Deviant_AAX Deviant_AU Deviant_VST Deviant_VST3 Deviant_All)
+foreach(target Deviant_AU Deviant_VST Deviant_VST3 Deviant_All)
     if(TARGET ${target})
         set_target_properties(${target} PROPERTIES 
             FOLDER "Targets"
             XCODE_GENERATE_SCHEME ON
             )
-    endif()
-endforeach()
-
-#set(AAX_BUNDLE "/Library/Application Support/Avid/Audio/Plug-Ins/Deviant.aaxplugin")
-
-foreach(target Deviant_AAX)
-    if(TARGET ${target})
-        set_target_properties(${target} PROPERTIES 
-            OSX_ARCHITECTURES "x86_64"
-            XCODE_SCHEME_EXECUTABLE "/Applications/Pro Tools Developer.app")
     endif()
 endforeach()
 
@@ -105,53 +94,12 @@ foreach(target Deviant_AU Deviant_VST Deviant_VST3)
             XCODE_ATTRIBUTE_ENABLE_HARDENED_RUNTIME YES
             XCODE_ATTRIBUTE_OTHER_CODE_SIGN_FLAGS --timestamp
             OSX_ARCHITECTURES "arm64;x86_64"
-            XCODE_SCHEME_EXECUTABLE "/Applications/REAPER64.app"
-            XCODE_SCHEME_ARGUMENTS "${AUDIO_PROJECTS_LOCATION}/DeviantTestRadiohead/DeviantTestRadiohead.RPP")
+            XCODE_SCHEME_EXECUTABLE "${DEBUG_APP}"
+            XCODE_SCHEME_ARGUMENTS "${DEBUG_ARGS}")
     endif()
 endforeach()
 
-add_custom_command(
-TARGET Deviant_AAX POST_BUILD COMMAND 
-COMMAND rm -f ~/Library/Preferences/Avid/Pro\ Tools/InstalledAAXPlugIns
-)
-
 juce_add_binary_data(BinaryData HEADER_NAME SadisticData.h NAMESPACE Data SOURCES ${resources})
-
-# juce_add_bundle_resources_directory(Deviant_AAX Resources)
-
-add_library(ALL_IPP INTERFACE)
-IF (WIN32)
-	set(IPP_ROOT "C:/Program Files (x86)/Intel/oneAPI/ipp/2021.1.1")
-	set (IPP_LIB "${IPP_ROOT}/lib/intel64")
-ELSE()
-	set(IPP_ROOT "/opt/intel/oneapi/ipp/2021.1.1")
-	set (IPP_LIB "${IPP_ROOT}/lib")
-ENDIF()
-
-target_include_directories(ALL_IPP INTERFACE "${IPP_ROOT}/include")
-
-add_library(ippi    STATIC IMPORTED GLOBAL)
-add_library(ipps    STATIC IMPORTED GLOBAL)
-add_library(ippvm   STATIC IMPORTED GLOBAL)
-add_library(ippcore STATIC IMPORTED GLOBAL)
-
-IF (WIN32)
-	set_target_properties(ippi    PROPERTIES IMPORTED_LOCATION ${IPP_LIB}/ippi.lib)
-	set_target_properties(ipps    PROPERTIES IMPORTED_LOCATION ${IPP_LIB}/ipps.lib)
-	set_target_properties(ippvm   PROPERTIES IMPORTED_LOCATION ${IPP_LIB}/ippvm.lib)
-	set_target_properties(ippcore PROPERTIES IMPORTED_LOCATION ${IPP_LIB}/ippcore.lib)
-ELSE()
-	set_target_properties(ippi    PROPERTIES IMPORTED_LOCATION ${IPP_LIB}/libippi.a    OSX_ARCHITECTURES x86_64)
-	set_target_properties(ipps    PROPERTIES IMPORTED_LOCATION ${IPP_LIB}/libipps.a    OSX_ARCHITECTURES x86_64)
-	set_target_properties(ippvm   PROPERTIES IMPORTED_LOCATION ${IPP_LIB}/libippvm.a   OSX_ARCHITECTURES x86_64)
-	set_target_properties(ippcore PROPERTIES IMPORTED_LOCATION ${IPP_LIB}/libippcore.a OSX_ARCHITECTURES x86_64)
-ENDIF()
-
-target_sources(Deviant_AAX PRIVATE ${bundle_resources})
-set_source_files_properties(${bundle_resources} PROPERTIES
-  MACOSX_PACKAGE_LOCATION "Resources"
-)
-source_group("Resources" FILES ${bundle_resources})
 
 #`target_compile_definitions` adds some preprocessor definitions to our target. In a Projucer
 # project, these might be passed in the 'Preprocessor Definitions' field. JUCE modules also make use
@@ -167,8 +115,6 @@ target_compile_definitions(Deviant PUBLIC
     JUCE_USE_STUDIO_ONE_COMPATIBLE_PARAMETERS=1
     )
 
-target_link_libraries(ALL_IPP INTERFACE ippi ipps ippvm ippcore)
-
 target_link_libraries(Deviant PRIVATE
     BinaryData
     juce::juce_audio_utils
@@ -176,7 +122,6 @@ target_link_libraries(Deviant PRIVATE
     juce::juce_product_unlocking
     juce::juce_dsp
     juce::juce_opengl
-    ALL_IPP
   PUBLIC
     juce::juce_recommended_config_flags
     juce::juce_recommended_lto_flags
