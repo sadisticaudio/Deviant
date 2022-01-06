@@ -1,5 +1,5 @@
 #pragma once
-//#include "sadistic.h"
+#include "deviant.h"
 #include "shaders.h"
 
 namespace sadistic {
@@ -15,9 +15,11 @@ namespace sadistic {
             openGLContext.setOpenGLVersionRequired (OpenGLContext::OpenGLVersion::openGL3_2);
             openGLContext.setRenderer(this);
             openGLContext.attachTo(*this);
-            openGLContext.setContinuousRepainting (true);
         }
         ~ScopeRenderer() override { openGLContext.detach(); }
+
+		void start() { openGLContext.setContinuousRepainting(true); }
+
         void getMatrix(float angle = 1.f) {
             const auto rotation { Matrix3D<float>::rotation({ MathConstants<float>::halfPi/4.f/angle, MathConstants<float>::halfPi/2.f, 0.f }) };
             const auto view { Matrix3D<float>(Vector3D<float>(0.0f, 0.0f, -10.0f)) }, viewMatrix { rotation * view };
@@ -36,11 +38,12 @@ namespace sadistic {
                 moonShader->use();
                 for (auto& u : mUniforms.data) u.ptr = std::make_unique<OpenGLShaderProgram::Uniform>(*moonShader, u.key.toRawUTF8());
             }
-            waveShader = std::make_unique<OpenGLShaderProgram> (openGLContext);
-            if (waveShader->addVertexShader (waveVertexShader) &&
-                waveShader->addShader (waveGeometryShader, 0x8DD9) &&
-                waveShader->addFragmentShader (waveFragmentShader) &&
-                waveShader->link()) {
+			auto shaderProgramAttempt = std::make_unique<OpenGLShaderProgram>(openGLContext);
+            if (shaderProgramAttempt->addVertexShader (waveVertexShader) &&
+				shaderProgramAttempt->addShader (waveGeometryShader, 0x8DD9) &&
+				shaderProgramAttempt->addFragmentShader (waveFragmentShader) &&
+				shaderProgramAttempt->link()) {
+				waveShader = std::move(shaderProgramAttempt);
                 waveShader->use();
                 for (auto& u : wUniforms.data) u.ptr = std::make_unique<OpenGLShaderProgram::Uniform>(*waveShader, u.key.toRawUTF8());
             }

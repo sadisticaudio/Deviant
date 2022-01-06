@@ -6,6 +6,7 @@ set(CMAKE_XCODE_GENERATE_SCHEME OFF)
 set(CMAKE_SUPPRESS_REGENERATION true)
 set(CMAKE_OSX_DEPLOYMENT_TARGET 10.9)
 set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 set(CMAKE_XCODE_ATTRIBUTE_OTHER_LDFLAGS "-Xlinker -headerpad -Xlinker 578")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake.modules/")
 
@@ -66,11 +67,11 @@ file(GLOB_RECURSE bundle_resources RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "Resourc
 file(GLOB SourceFiles
     Source/*.h
     Source/*.cpp
-    ${CODE}/sadistic/Source/*.h
-    ${CODE}/sadistic/Source/*.cpp)
+    sadistic/*.h
+    sadistic/*.cpp)
 
 target_sources(Deviant PRIVATE ${SourceFiles})
-source_group(TREE ${CODE}/sadistic PREFIX "" FILES ${SourceFiles})
+source_group(TREE ../ PREFIX "" FILES ${SourceFiles})
 # Move the INTERFACE auto-created JUCE library stuff into its own folder
 source_group("JUCE Library Code" REGULAR_EXPRESSION "juce_")
 # This cleans up the folder organization, especially on Xcode.
@@ -114,7 +115,7 @@ TARGET Deviant_AAX POST_BUILD COMMAND
 COMMAND rm -f ~/Library/Preferences/Avid/Pro\ Tools/InstalledAAXPlugIns
 )
 
-juce_add_binary_data(BinaryData HEADER_NAME SadisticData.h NAMESPACE Data SOURCES ../Resources/saLogo.svg ../Resources/shadowsIntoLight.ttf ${resources})
+juce_add_binary_data(BinaryData HEADER_NAME SadisticData.h NAMESPACE Data SOURCES ${resources})
 
 # juce_add_bundle_resources_directory(Deviant_AAX Resources)
 

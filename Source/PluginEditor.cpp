@@ -15,6 +15,7 @@ sadistic::DeviantEditor::DeviantEditor (Deviant& p) : AudioProcessorEditor (&p),
     //        startTimer(1000);
     //    }
     scope.prepare({ deviant.getSampleRate(), (uint32) 2, (uint32) 1 });
+	renderer.start();
     setResizeLimits(150, 75, 1980, 1080);
     setResizable(true, false);
     setSize (600, 300);
@@ -28,8 +29,9 @@ void sadistic::DeviantEditor::timerCallback() {
 }
 
 void sadistic::DeviantEditor::resized() {
-    auto bounds { getBounds() };
-    renderer.setBounds(bounds);
+    renderer.setBounds(getBounds());
     theDials.setBounds(getBounds());
     //    if(authorizer) authorizer->setBounds(bounds);
 }
+
+AudioProcessorEditor* sadistic::createDeviantEditor(Deviant& deviant) { return new sadistic::DeviantEditor (deviant); }

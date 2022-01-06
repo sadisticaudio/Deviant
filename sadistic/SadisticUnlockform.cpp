@@ -24,7 +24,7 @@ namespace sadistic {
         void paint (Graphics& g) override {
             g.fillAll (Colours::black.withAlpha (0.7f));
             g.setColour (Colours::lightslategrey.brighter());
-//            g.setFont (sadistic::getSadisticFont());
+            g.setFont (sadistic::getSadisticFont());
             g.drawFittedText (translate("Contacting XYZ...").replace ("XYZ", form.status.getWebsiteName()),
                               getLocalBounds().reduced (20, 0).removeFromTop (proportionOfHeight (0.6f)),
                               Justification::centred, 5);
@@ -224,12 +224,12 @@ namespace sadistic {
     
     void SadisticUnlockForm::paint (Graphics& g) {
         g.fillAll(Colours::black);
-//        logo->drawWithin(g, logo->getBounds().toFloat(), 64, 1.f);
+        logo->drawWithin(g, logo->getBounds().toFloat(), 64, 1.f);
     }
     
     void SadisticUnlockForm::resized() {
 //        jassert (JUCEApplicationBase::isStandaloneApp() || findParentComponentOfClass<DialogWindow>() == nullptr);
-//        logo->centreWithSize((int)((float) getHeight() * 0.93f), (int)((float) getHeight() / 0.93f));
+        logo->centreWithSize((int)((float) getHeight() * 0.93f), (int)((float) getHeight() / 0.93f));
         const int buttonHeight = 22;
         auto r = getLocalBounds().reduced (10, 20);
         auto buttonArea = r.removeFromBottom (buttonHeight);

@@ -151,3 +151,82 @@ out vec4 color;
 void main() {
     color = fColour;
 })";
+
+static const char* vertexShader = R"(
+#version 330 core
+    out float scMag;
+    out float mainMag;
+    out float scDelta;
+    out float mainDelta;
+    layout (location = 0) in vec4 position;
+    layout (location = 1) in vec2 magnitudes;
+    layout (location = 2) in vec2 deltas;
+
+    void main() {
+        scDelta = deltas.y;
+        mainDelta = deltas.x;
+        gl_Position = position;
+        mainMag = magnitudes.x;
+        scMag = magnitudes.y;
+    })";
+
+static const char* geometryShader = R"(
+#version 330 core
+    layout (triangles) in;
+    layout (triangle_strip, max_vertices = 24) out;
+    in float mainMag[];
+    in float scMag[];
+    in float mainDelta[];
+    in float scDelta[];
+    out vec4 fColour;
+    float lineWidthDivisor = 16.0;
+    float lineHeight = 0.01;
+    
+    void drawStrip(vec2 topLeft, vec2 topRight) {
+        if (topLeft.y > -1.0 || topRight.y > -1.0) {
+            gl_Position = vec4(topLeft, 0.0, 1.0);
+            EmitVertex();
+            gl_Position = vec4(topLeft.x, -1.0, 0.0, 1.0);
+            EmitVertex();
+            gl_Position = vec4(topRight, 0.0, 1.0);
+            EmitVertex();
+            gl_Position = vec4(topRight.x, -1.0, 0.0, 1.0);
+            EmitVertex();
+            EndPrimitive();
+        }
+    }
+    
+    void drawLine(vec2 left, vec2 right, float leftDelta, float rightDelta) {
+        if (left.y != -1.0 || right.y != -1.0) {
+            gl_Position = vec4(left.x - leftDelta/lineWidthDivisor, left.y + lineHeight, 0.0, 1.0);
+            EmitVertex();
+            gl_Position = vec4(left.x, left.y - lineHeight, 0.0, 1.0);
+            EmitVertex();
+            gl_Position = vec4(right.x - rightDelta/lineWidthDivisor, right.y + lineHeight, 0.0, 1.0);
+            EmitVertex();
+            gl_Position = vec4(right.x, right.y - lineHeight, 0.0, 1.0);
+            EmitVertex();
+            EndPrimitive();
+        }
+    }
+
+    void main() {
+        float leftX = gl_in[0].gl_Position.x;
+        float rightX = gl_in[2].gl_Position.x;
+        fColour = vec4( 0.2, 0.6, 0.3, 0.2 );
+        drawStrip(vec2(leftX, scMag[0]), vec2(rightX, scMag[2]));
+        fColour = vec4(0.3, 0.9, 0.4, 1.0);
+        drawLine(vec2(leftX, scMag[0]), vec2(rightX, scMag[2]), scDelta[0], scDelta[2]);
+        fColour = vec4( 0.0, 0.3, 0.7, 0.2 );
+        drawStrip(vec2(leftX, mainMag[0]), vec2(rightX, mainMag[2]));
+        fColour = vec4( 0.1, 0.8, 1.0, 1.0 );
+        drawLine(vec2(leftX, mainMag[0]), vec2(rightX, mainMag[2]), mainDelta[0], mainDelta[2]);
+    } )";
+
+static const char* fragmentShader = R"(
+#version 330 core
+    in vec4 fColour;
+    out vec4 color;
+    void main() {
+        color = fColour;
+    })";

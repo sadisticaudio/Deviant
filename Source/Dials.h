@@ -69,9 +69,8 @@ namespace sadistic {
                 showHzValue(highKnob, rLabel, rSuffix); };
             highKnob.onDragEnd = [&,this]() { hideValue(rLabel, rSuffix); hideValue(lLabel, lSuffix); };
             
-            addAllAndMakeVisible(*this, blendKnob, driveKnob, driveSVG, suffixLabel, valueLabel, lLabel, rLabel, button);
+            addAllAndMakeVisible(*this, blendKnob, driveKnob, mainBlendKnob, driveSVG, suffixLabel, valueLabel, lLabel, rLabel, button);
             
-            addChildComponent(mainBlendKnob);
             addChildComponent(lowKnob);
             addChildComponent(highKnob);
             
@@ -93,8 +92,8 @@ namespace sadistic {
             mainBlendKnob.hideMouseOver = [&] { if(mouseOverActive) hideMouseOverLabels(mainBlendKnob, valueLabel, suffixLabel); repaint(); };
             
             popupMenu.toggleMouseOverEnabled = [&]{ mouseOverActive = mouseOverActive ? false : true; repaint(); };
-            popupMenu.toggleControls = [&]{ controlsActive = controlsActive ? false : true;
-                forEach ([ctrls = controlsActive] (auto& knob) { knob.setVisible(ctrls); }, mainBlendKnob, lowKnob, highKnob);
+            popupMenu.toggleFilterControls = [&]{ filterControlsActive = filterControlsActive ? false : true;
+                forEach ([ctrls = filterControlsActive] (auto& knob) { knob.setVisible(ctrls); }, lowKnob, highKnob);
                 repaint(); };
             
             switchEffect(idx);
@@ -171,6 +170,21 @@ namespace sadistic {
         }
         void mouseDown(const MouseEvent& e) override { if (e.mods.isRightButtonDown()) { popupMenu.show(this); } }
         
+        struct RightClickMenu : PopupMenu {
+            RightClickMenu() {
+                PopupMenu::Item itemLoad { "Show Info On Mouse-Over" };
+                itemLoad.action = { [&] { toggleMouseOverEnabled(); } };
+                addItem(itemLoad);
+                PopupMenu::Item itemSave { "Show Filter Controls" };
+                itemSave.action = { [&,this] { toggleFilterControls(); } };
+                addItem(itemSave);
+            }
+            void show(Component* comp) {
+                PopupMenu::Options options;
+                PopupMenu::showMenuAsync(options.withTargetComponent(comp)); }
+            std::function<void()> toggleMouseOverEnabled, toggleFilterControls;
+        };
+        
         FilterLAF alaf;
         APVTS& apvts;
         SadTextButton button;
@@ -180,7 +194,7 @@ namespace sadistic {
         EmpiricalSlider driveKnob { true }, blendKnob;
         FilterKnob lowKnob { Data::apiKnob_svg }, highKnob { Data::apiKnob_svg };
         DeviantSlider mainBlendKnob;
-        bool mouseOverActive { false }, controlsActive { false };
+        bool mouseOverActive { false }, filterControlsActive { false };
         RightClickMenu popupMenu;
         std::unique_ptr<APVTS::SliderAttachment> driveAttachment, lowAttachment, highAttachment, blendAttachment, mainBlendAttachment;
     };

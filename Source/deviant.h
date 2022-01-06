@@ -2,7 +2,7 @@
 #if (SADISTIC_PRO == 1)
 #include "../../Source/SadisticUnlockform.h"
 #else
-#include "SadisticUnlockform.h"
+#include "../sadistic/SadisticUnlockform.h"
 #endif
 
 
@@ -122,7 +122,6 @@ namespace sadistic {
         static inline void calculateCoefficients(float(& coeffs)[maxCoeffs]) {
             auto& [drive, lo, hi, mDrive, noName4, mag, attenuation, blend] = coeffs;
             mDrive = powf(drive/111.f, 2.f);
-            blend *= jlimit(0.f, 1.f, 4.f * drive / 111.f);
             attenuation = jmap(powf(drive/111.f, 0.08f), 1.f, 0.14f); }
         template<typename F> static inline F processSample(const F sample, const float (&coeffs)[maxCoeffs]) {
             const auto& [drive, lo, hi, mDrive, noName4, mag, attenuation, blend] = coeffs;
@@ -134,21 +133,17 @@ namespace sadistic {
         static inline void calculateCoefficients(float(& coeffs)[maxCoeffs]) {
             auto& [drive, lo, hi, mDrive, max, mag, attenuation, blend] = coeffs;
             mDrive = powf(((drive * 0.75f)/111.f) * 0.75f - 1.f, 16.f) * 1024.f + 1.f;
-//            blend *= jlimit(0.f, 1.f, 4.f * drive / 111.f);
-            max = 1.f;
-            mag = 1.f;
             attenuation = 1.f - 0.3f * (drive/111.f); }
         template<typename F> static inline F processSample(const F sample, const float (&coeffs)[maxCoeffs]) {
             const auto& [drive, lo, hi, mDrive, max, mag, attenuation, blend] = coeffs;
             const auto x { static_cast<float>(sample) };
-            return (rround((x + 1.f) * mDrive) / mDrive - 1.f) * attenuation * blend + x * (1.f - blend); }
+            return (rround((x/mag + 1.f) * mDrive) / mDrive - 1.f) * mag * attenuation * blend + x * (1.f - blend); }
     };
     
     struct Clipper {
         static inline void calculateCoefficients(float(& coeffs)[maxCoeffs]) {
             auto& [drive, lo, hi, mDrive, noName4, mag, attenuation, blend] = coeffs;
             mDrive = powf(drive/111.f, 2.f);
-//            blend *= jlimit(0.f, 1.f, 4.f * drive / 111.f);
             attenuation = jmap(powf(mDrive, 0.04f), 1.f, 0.14f); }
         template<typename F> static inline F processSample(const F sample, const float (&coeffs)[maxCoeffs]) {
             const auto& [drive, lo, hi, mDrive, noName4, mag, attenuation, blend] = coeffs;
@@ -160,7 +155,6 @@ namespace sadistic {
         static inline void calculateCoefficients(float(& coeffs)[maxCoeffs]) {
             auto& [drive, lo, hi, mDrive, noName4, mag, attenuation, blend] = coeffs;
             mDrive = sadSymmetricSkew(drive/111.f, -0.96f);
-//            blend *= jlimit(0.f, 1.f, 4.f * drive / 111.f);
             attenuation = jmap(powf(drive/111.f * 0.5f, 0.1f), 1.f, 0.03f); }
         template<typename F> static inline F processSample(const F sample, const float (&coeffs)[maxCoeffs]) {
             const auto& [drive, lo, hi, mDrive, noName4, mag, attenuation, blend] = coeffs;
@@ -172,7 +166,6 @@ namespace sadistic {
         static inline void calculateCoefficients(float(& coeffs)[maxCoeffs]) {
             auto& [drive, lo, hi, mDrive, noName4, mag, attenuation, blend] = coeffs;
             mDrive = drive/111.f;
-//            blend *= jlimit(0.f, 1.f, 4.f * drive / 111.f);
             attenuation = jmap(powf(drive/111.f, 0.08f), 1.f, 0.14f); }
         template<typename F> static inline F processSample(const F sample, const float (&coeffs)[maxCoeffs]) {
             const auto& [drive, lo, hi, mDrive, noName4, mag, attenuation, blend] = coeffs;
@@ -205,10 +198,9 @@ namespace sadistic {
         int getRoute() const     { return static_cast<AudioParameterInt&>(defaults[1].get()).get(); }
         int getIndex() const     { return static_cast<AudioParameterInt&>(defaults[2].get()).get(); }
         float getBlend() const   { return static_cast<AudioParameterFloat&>(defaults[3].get()).get(); }
+        void setMagnitudeCoefficient(float mag) { coeffs[5] = mag; }
         virtual void init() {
             for (size_t i { 0 }; i < params.size(); ++i) coeffs[i] = params[i].get().get();
-            coeffs[4] = 1.f;
-            coeffs[5] = 1.f;
             coeffs[7] = getBlend();
             calculateCoefficients();
             cookParameters();
@@ -242,7 +234,7 @@ namespace sadistic {
         int effectIndex;
         ParamList defaults;
         FloatParamList params;
-        float coeffs[maxCoeffs];
+        float coeffs[maxCoeffs] { 0.f, 20.f, 20000.f, 0.f, 0.f, 1.f, 1.f, 1.f };
     };
     
     struct TableManager {
@@ -276,7 +268,6 @@ namespace sadistic {
             for (int i { 0 }; i <= gainLength; ++i) {
                 const auto gainSample { static_cast<F>(-1.f + 2.f * float(i) / float(gainLength)) };
                 table[i] = blend * shapeSample(aC, bC, cC, dC, hC, gainSample) + (F(1.0) - blend) * gainSample;
-//                table[i] = blend * Clipper::processSample(Deviation::processSample(Atan::processSample(gainSample, aC), dC), cC) + (F(1.0) - blend) * gainSample;
             }
         }
         
@@ -351,15 +342,7 @@ namespace sadistic {
             return static_cast<float>(range.convertTo0to1(getValue())); }
         bool isLeft, isSmall, isDefaultHigh; public: bool hitTest (int x, int y) override;
     };
-    struct Frame : Component {
-        Frame() { setInterceptsMouseClicks(false, false); }
-        void paint(Graphics& g) override {
-            Path rectangle;
-            g.setColour(Colours::white.darker());
-            rectangle.addRoundedRectangle(getLocalBounds(), 5);
-            g.strokePath(rectangle, PathStrokeType(5.f));
-        }
-    };
+
     class TransLabel  : public Label    {public: bool hitTest (int x, int y) override;};
     void showEmpiricalValue(Slider& slider, Label& label1, Component& child);
     void hideValue(Label& valueLabel, Label& suffixLabel);
@@ -452,21 +435,6 @@ namespace sadistic {
         Colour colour { Colours::grey };
         SadLabel label;
         const bool isLeft;
-    };
-    
-    struct RightClickMenu : PopupMenu {
-        RightClickMenu() {
-            PopupMenu::Item itemLoad { "Show Info On Mouse-Over" };
-            itemLoad.action = { [&] { toggleMouseOverEnabled(); } };
-            addItem(itemLoad);
-            PopupMenu::Item itemSave { "Show Extra Controls" };
-            itemSave.action = { [&,this] { toggleControls(); } };
-            addItem(itemSave);
-        }
-        void show(Component* comp) {
-            PopupMenu::Options options;
-            PopupMenu::showMenuAsync(options.withTargetComponent(comp)); }
-        std::function<void()> toggleMouseOverEnabled, toggleControls;
     };
 }
 

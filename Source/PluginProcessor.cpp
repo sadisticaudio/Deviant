@@ -36,4 +36,4 @@ bool sadistic::Deviant::isBusesLayoutSupported (const BusesLayout& layout) const
     return false;
 }
 
-AudioProcessorEditor* sadistic::Deviant::createEditor() { return new sadistic::DeviantEditor (*this); }
+AudioProcessorEditor* sadistic::Deviant::createEditor() { return createDeviantEditor(*this); }

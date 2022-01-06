@@ -5,6 +5,8 @@ namespace sadistic {
     public:
         
         Deviant(APVTS::ParameterLayout);
+        
+        //AudioProcessor overrides - defined in cpp
         bool canApplyBusCountChange (bool isInput, bool isAddingBuses, BusProperties& outNewBusProperties) override;
         bool canAddBus (bool) const override;
         bool canRemoveBus (bool) const override;
@@ -16,9 +18,11 @@ namespace sadistic {
         void processBlock (AudioBuffer<double>&, MidiBuffer&) override;
         void processBlockBypassed (AudioBuffer<float>& b, MidiBuffer&) override;
         void processBlockBypassed (AudioBuffer<double>& b, MidiBuffer&) override;
+        AudioProcessorEditor* createEditor() override;
+        
+        //AudioProcessor overrides - defined here
         bool supportsDoublePrecisionProcessing() const override { return true; }
         const String getName() const override { return JucePlugin_Name; }
-        const String getPluginCode() const { return getPluginCodeString(JucePlugin_PluginCode); }
         bool acceptsMidi() const override { return false; }
         bool producesMidi() const override { return false; }
         bool isMidiEffect() const override { return false; }
@@ -28,35 +32,23 @@ namespace sadistic {
         void setCurrentProgram (int) override {}
         const String getProgramName (int) override { return {}; }
         void changeProgramName (int, const String&) override {}
-        AudioProcessorEditor* createEditor() override;
         bool hasEditor() const override { return true; }
-        APVTS& getAPVTS() { return apvts; }
-
-        void setMetaParameter(const Identifier& id, int val) {
-            auto wtf = var(int(val));
-            auto x = apvts.state;
-            x.setProperty(id, var(val), &undoManager);
-            apvts.replaceState(x);
-        }
-        int getMetaParameter(const Identifier& id) {
-            auto wtfagain = apvts.state.getProperty(id);
-            return wtfagain; }//static_cast<int>(apvts.state.getProperty(id)); }
-        void setCurrentScreen(int s) {
-            apvts.state.setProperty("mainCurrentScreen", var(int(s)), &undoManager);
-        }
-        int getCurrentScreen() {
-            const auto screenProperty { static_cast<int>(apvts.state.getProperty("mainCurrentScreen")) };
-            return screenProperty;
-        }
-        UndoManager* getUndoManager() { return &undoManager; }
-        LongFifo<float>* getOscilloscopeFifo() { return oscilloscopeFifo; }
-
         void getStateInformation (MemoryBlock& destinationBlockForAPVTS) override {
             MemoryOutputStream stream(destinationBlockForAPVTS, false);
             apvts.state.writeToStream (stream); }
         void setStateInformation (const void* dataFromHost, int size) override {
             auto treeCreatedFromData { ValueTree::readFromData (dataFromHost, static_cast<size_t>(size)) };
             if (treeCreatedFromData.isValid()) apvts.state = treeCreatedFromData; }
+        
+        //extra function definitions/templates
+        APVTS& getAPVTS() { return apvts; }
+
+        void setCurrentScreen(int s) {
+            apvts.state.setProperty("mainCurrentScreen", var(int(s)), &undoManager);
+        }
+        int getCurrentScreen() const { return static_cast<int>(apvts.state.getProperty("mainCurrentScreen")); }
+        UndoManager* getUndoManager() { return &undoManager; }
+        LongFifo<float>* getOscilloscopeFifo() { return oscilloscopeFifo; }
 
         template<typename FloatType> void release(DeviantMembers<FloatType>& m) { m.reset(); }
         template<typename FloatType> void prepare(double sampleRate, int samplesPerBlock, DeviantMembers<FloatType>& m) {
@@ -80,15 +72,16 @@ namespace sadistic {
         }
         
     private:
-        std::atomic<int> cIdx[numFX] { 0,0,0,0,0 };
         float coefficients[numFX][maxCoeffs][maxCoeffs];
+        std::atomic<int> cIdx[numFX] { 0,0,0,0,0 };
         DeviantMembers<double> membersD;
         DeviantMembers<float> membersF;
         UndoManager undoManager;
         APVTS apvts;
-        sadistic::SadisticMarketplaceStatus marketplaceStatus { getPluginCode() };
+        sadistic::SadisticMarketplaceStatus marketplaceStatus { getPluginCodeString(JucePlugin_PluginCode) };
         LongFifo<float> oscilloscopeFifo[2]{};
         
         JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Deviant)
     };
+    AudioProcessorEditor* createDeviantEditor(Deviant&);
 }

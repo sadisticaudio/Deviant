@@ -26,12 +26,6 @@ namespace sadistic {
             ParamList paramList;
             ParamInfo info =    paramInfo[numFX][0];
             addParameter<AudioParameterFloat>(layout, paramList, getParamID(numFX, 0), getParamName(numFX, 0), NormalisableRange<float>(info.min, info.max), info.defaultValue, getSuffix(info.type));
-//            info =              paramInfo[numFX][1];
-//            addParameter<AudioParameterFloat>(layout, paramList, getParamID(numFX, 1), getParamName(numFX, 1), NormalisableRange<float>(info.min, info.max), info.defaultValue, getSuffix(info.type));
-//            info =              paramInfo[numFX][2];
-//            addParameter<AudioParameterInt>(layout, paramList, getParamID(numFX, 2), getParamName(numFX, 2), int(info.min), int(info.max), int(info.defaultValue), getSuffix(info.type));
-//            info =              paramInfo[numFX][3];
-//            addParameter<AudioParameterFloat>(layout, paramList, getParamID(numFX, 3), getParamName(numFX, 3), NormalisableRange<float>(info.min, info.max), info.defaultValue, getSuffix(info.type));
             return paramList;
         }
         
@@ -42,7 +36,6 @@ namespace sadistic {
             resetAll(blendDelay); }
         
         void prepare(const ProcessSpec& processSpec) {
-            print("type of FloatType", typeid(FloatType).name());
             const ProcessSpec spec { processSpec.sampleRate, uint32(bufferLength), processSpec.numChannels };
             blendDelay.setDelay(getLatency());
             blendBuffer.setSize((int)spec.numChannels, bufferLength);
@@ -77,17 +70,25 @@ namespace sadistic {
                 }
             }
         }
-        
-        float getBlend() const   { return static_cast<AudioParameterFloat&>(params[0].get()).get(); }
 
         void process(AudioBuffer<FloatType>& buffer, LongFifo<float> (& oscilloscope)[2], bool bypassed = false) {
             
+            //the bit crusher algorithm works best with access to the dynamic range of its input
+            crusher.setMagnitudeCoefficient(jlimit(0.000001f, 1.f, static_cast<float>(buffer.getMagnitude(0, bufferLength))));
+            
             bool paramsAreChanging { false }, fxNeedsUpdate[numFX]{};
-            for (int i { 0 }; i < numFX; ++i) { fxNeedsUpdate[i] = effects[i]->parametersNeedCooking(); if (fxNeedsUpdate[i]) paramsAreChanging = true; }
+            for (int i { 0 }; i < numFX; ++i) {
+                fxNeedsUpdate[i] = effects[i]->parametersNeedCooking();
+                if (fxNeedsUpdate[i])
+                    paramsAreChanging = true;
+            }
 
             if (paramsAreChanging) {
                 xBuffer.makeCopyOf(buffer);
-                for (int i { 0 }; i < numFX; ++i) { effects[i]->processSamples(xBuffer); effects[i]->processSamples(lastBuffer); }
+                for (int i { 0 }; i < numFX; ++i) {
+                    effects[i]->process(xBuffer);
+                    effects[i]->process(lastBuffer);
+                }
             }
             
             //make a copy of the buffer in order to push it through the fx again if the params have changed and return their delay lines and filters to the state they started at... not efficient I'm sure but it is a sure way to keep clicks and pops from creeping into the output buffer no matter what happens and copying is cheap!
@@ -121,27 +122,25 @@ namespace sadistic {
         }
 
         //Data Members
-        AudioBuffer<FloatType> blendBuffer, xBuffer, lastBuffer;
-        sadistic::DelayBuffer<FloatType> blendDelay;
         FloatType fifo1L[bufferLength]{}, fifo1R[bufferLength]{}, fifo2L[bufferLength]{}, fifo2R[bufferLength]{};
+        int fifoIndex { 0 };
         FloatType*     fifo1[2] { fifo1L, fifo1R },     *  fifo2[2] { fifo2L, fifo2R };
         FloatType**    writeFifo{ fifo1 },              ** readFifo { fifo2 };
-        int fifoIndex { 0 };
-
+        AudioBuffer<FloatType> blendBuffer, xBuffer, lastBuffer;
+        sadistic::DelayBuffer<FloatType> blendDelay;
+        
         //FX Processors
         Shaper<Atan, FloatType> atan;
         Shaper<Crusher, FloatType> crusher;
         Shaper<Clipper, FloatType> clipper;
         Shaper<Deviation, FloatType> deviation;
         Shaper<Hyperbolic, FloatType> hyperbolic;
-//        StaticWaveShaper<FloatType> staticWaveShaper;
 
         // Array of base class pointers to the above effects, similar to JUCE's ProcessorBase class,
         // with prepare, reset, and process methods
-        DeviantEffect* effects[numFX] {
-            { &atan }, { &crusher }, { &clipper }, { &deviation }, { &hyperbolic } };
+        DeviantEffect* effects[numFX] { { &atan }, { &crusher }, { &clipper }, { &deviation }, { &hyperbolic } };
         
-        // std::vector<reference_wrapper<AudioParameterFloat>> to store parameter references that
+        // std::vector<reference_wrapper<RangedAudioParameter>> to store parameter references that
         // are not associated with any particular effect
         ParamList params;
     };
