@@ -1,6 +1,24 @@
 cmake_minimum_required(VERSION 3.14)
 project(Deviant VERSION 1.0.0)
 
+# Paths are defined here, alter as necessary... I attempted some cmake hackery to avoid having to set these manually.  I failed. 
+# Other parts of this file will most likely need/want to be tailored as well.  Any feedback to improve this procedure would be appreciated.
+IF (WIN32)
+    set(JUCE_LOCATION "C:/Users/frye/Documents/JUCE")
+    set(VST_COPY_LOCATION "C:/Program Files (x86)/Common Files/VST")
+    set(VST3_COPY_LOCATION "C:/Program Files/Common Files/VST3")
+    set(VST2_SDK_LOCATION "C:/Users/frye/CODE/SDKs/VST3_SDK/VST2_SDK")
+    set(AUDIO_PROJECTS_LOCATION "C:/Users/frye/Music/Projects")
+ELSE()
+    set(JUCE_LOCATION "$ENV{HOME}/Documents/JUCE")
+    set(VST_COPY_LOCATION "/Library/Audio/Plug-Ins/VST")
+    set(VST3_COPY_LOCATION "/Library/Audio/Plug-Ins/VST3")
+    set(VST2_SDK_LOCATION "$ENV{HOME}/CODE/SDKs/VST3_SDK/VST2_SDK")
+    set(AUDIO_PROJECTS_LOCATION "$ENV{HOME}/Music/Projects/Reaper")
+    set(DEBUG_APP "/Applications/REAPER64.app")
+    set(DEBUG_ARGS "${AUDIO_PROJECTS_LOCATION}/DeviantTestRadiohead/DeviantTestRadiohead.RPP")
+ENDIF()
+
 # By default we don't want schemes to be made for modules, etc
 set(CMAKE_XCODE_GENERATE_SCHEME OFF)
 set(CMAKE_SUPPRESS_REGENERATION true)
@@ -18,25 +36,6 @@ set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "Targets")
 # Create a /Modules directory with all the JUCE Module code
 option(JUCE_ENABLE_MODULE_SOURCE_GROUPS "Show all module sources in IDE projects" ON)
 
-get_filename_component(CODE ../../ ABSOLUTE)
-#include_directories(${CODE}/SDKs/VST3_SDK/VST2_SDK)
-
-IF (WIN32)
-    set(JUCE_LOCATION "C:/Users/frye/Documents/JUCE")
-    set(VST_COPY_LOCATION "C:/Program Files (x86)/Common Files/VST")
-    set(VST3_COPY_LOCATION "C:/Program Files/Common Files/VST3")
-    set(VST2_SDK_LOCATION "C:/Users/frye/CODE/SDKs/VST3_SDK/VST2_SDK")
-    set(AUDIO_PROJECTS_LOCATION "C:/Users/frye/Music/Projects")
-ELSE()
-    set(JUCE_LOCATION "$ENV{HOME}/Documents/JUCE")
-    set(VST_COPY_LOCATION "/Library/Audio/Plug-Ins/VST")
-    set(VST3_COPY_LOCATION "/Library/Audio/Plug-Ins/VST3")
-    set(VST2_SDK_LOCATION "$ENV{HOME}/CODE/SDKs/VST3_SDK/VST2_SDK")
-    set(AUDIO_PROJECTS_LOCATION "$ENV{HOME}/Music/Projects/Reaper")
-    set(DEBUG_APP "/Applications/REAPER64.app")
-    set(DEBUG_ARGS "${AUDIO_PROJECTS_LOCATION}/DeviantTestRadiohead/DeviantTestRadiohead.RPP")
-ENDIF()
-
 add_subdirectory(${JUCE_LOCATION} JUCE)
 juce_set_vst2_sdk_path(${VST2_SDK_LOCATION})
 juce_add_plugin(Deviant
@@ -47,7 +46,7 @@ juce_add_plugin(Deviant
     PRODUCT_NAME "Deviant"
     COMPANY_COPYRIGHT "copyright Sadistic Algorithms, LLC, 2020"
     COMPANY_EMAIL "support@sadisticaudio.com"
-    DOCUMENT_EXTENSIONS xml wav
+#    DOCUMENT_EXTENSIONS xml wav
     FORMATS AU VST VST3
     COPY_PLUGIN_AFTER_BUILD TRUE
     AU_COPY_DIR "/Library/Audio/Plug-Ins/Components"
@@ -67,12 +66,15 @@ file(GLOB SourceFiles
     Source/*.h
     Source/*.cpp
     sadistic/*.h
-    sadistic/*.cpp)
+    sadistic/*.cpp
+)
 
 target_sources(Deviant PRIVATE ${SourceFiles})
 source_group(TREE ../ PREFIX "" FILES ${SourceFiles})
+
 # Move the INTERFACE auto-created JUCE library stuff into its own folder
 source_group("JUCE Library Code" REGULAR_EXPRESSION "juce_")
+
 # This cleans up the folder organization, especially on Xcode.
 # It tucks the Plugin varieties into a "Targets" folder and generate an Xcode Scheme manually
 # since Xcode scheme generation is turned off to limit noise
@@ -112,8 +114,7 @@ target_compile_definitions(Deviant PUBLIC
     JUCE_USE_CURL=0     # If you remove this, add `NEEDS_CURL TRUE` to the `juce_add_plugin` call
     JUCE_COPY_PLUGIN_AFTER_BUILD=TRUE
     JUCE_OPENGL3=1
-    JUCE_USE_STUDIO_ONE_COMPATIBLE_PARAMETERS=1
-    )
+)
 
 target_link_libraries(Deviant PRIVATE
     BinaryData

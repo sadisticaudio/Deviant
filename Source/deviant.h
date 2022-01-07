@@ -16,9 +16,6 @@ namespace sadistic {
 
     struct IDs {
         static inline const Identifier currentScreen { "currentScreen" };
-        static inline const Identifier staticIdentifier { "static" };
-        static inline const Identifier dynamicIdentifier { "dynamic" };
-        static inline const Identifier neitherIdentifier { "neither" };
     };
     struct EffectInfo { bool defaultEnabled; int defaultRoute; int defaultIndex; float defaultBlend; int numParams; };
     
@@ -178,8 +175,8 @@ namespace sadistic {
         return blend * Hyperbolic::processSample(Clipper::processSample(Deviation::processSample(Atan::processSample(Crusher::processSample(sample, bC), aC), dC), cC), hC) + (F(1) - blend) * sample; }
     
     struct DeviantEffect {
-        DeviantEffect(String eID, ParamList refs, FloatParamList floatRefs, int eIDX) : effectID(eID), shaperType(eID.contains("static") ? IDs::staticIdentifier : eID.contains("dynamic") ? IDs::dynamicIdentifier : IDs::neitherIdentifier), effectIndex(eIDX), defaults(refs), params(floatRefs) {}
-        DeviantEffect(DeviantEffect& other) : effectID(other.effectID), shaperType(other.effectID.contains("static") ? IDs::staticIdentifier : other.effectID.contains("dynamic") ? IDs::dynamicIdentifier : IDs::neitherIdentifier), effectIndex(other.effectIndex), defaults(other.defaults), params(other.params) {}
+        DeviantEffect(String eID, ParamList refs, FloatParamList floatRefs, int eIDX) : effectID(eID), effectIndex(eIDX), defaults(refs), params(floatRefs) {}
+        DeviantEffect(DeviantEffect& other) : effectID(other.effectID), effectIndex(other.effectIndex), defaults(other.defaults), params(other.params) {}
         virtual ~DeviantEffect() {}
         bool operator<(const DeviantEffect& other) {
             if (getRoute() < other.getRoute()) return true;
@@ -199,7 +196,7 @@ namespace sadistic {
         int getIndex() const     { return static_cast<AudioParameterInt&>(defaults[2].get()).get(); }
         float getBlend() const   { return static_cast<AudioParameterFloat&>(defaults[3].get()).get(); }
         void setMagnitudeCoefficient(float mag) { coeffs[5] = mag; }
-        virtual void init() {
+        void init() {
             for (size_t i { 0 }; i < params.size(); ++i) coeffs[i] = params[i].get().get();
             coeffs[7] = getBlend();
             calculateCoefficients();
@@ -229,7 +226,6 @@ namespace sadistic {
             calculateCoefficients();
         }
         String effectID;
-        const Identifier& shaperType;
         const float maxDeltaDivisor { 50.f };
         int effectIndex;
         ParamList defaults;

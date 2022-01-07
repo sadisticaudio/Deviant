@@ -28,7 +28,6 @@ namespace sadistic {
             mSampleRate = jlimit(44100.0, 192000.0, spec.sampleRate);
             spectralInversionDelay.setDelay(getLatency());
             spectralInversionDelay.prepare(spec);
-            spectralInversionDelay2.prepare(spec);
             spectralInversionBuffer.setSize((int) spec.numChannels, (int) spec.maximumBlockSize);
             spectralInversionBuffer.clear();
             filter.prepare({ mSampleRate, spec.maximumBlockSize, spec.numChannels }); update(); }
@@ -72,7 +71,6 @@ namespace sadistic {
         double mSampleRate { 44100.0 };
         F mLow { F(20.0) }, mHigh { F(20000.0) };
         ProcessorDuplicator<FIR::Filter<F>, FIR::Coefficients<F>> filter;
-        DelayLine<F> spectralInversionDelay2 { 4 };
         sadistic::DelayBuffer<F> spectralInversionDelay;
     };
 }
