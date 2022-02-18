@@ -66,7 +66,7 @@ namespace sadistic {
     enum { FIFOORDER = 13, BUFFERLENGTH = 256, SCOPESIZE = 256, FIFOSIZE = 1 << FIFOORDER };
     enum { dB = 0, Hz, Pct, Int };
     
-    struct ParamInfo { enum ParamType { dB = 0, Hz, Pct, Int }; float min { 0 }; float max { 1.f }; float defaultValue { 1.f }; ParamType type { dB }; };
+    struct ParamInfo { enum ParamType { dB = 0, Hz, Pct, Int, NA }; float min { 0 }; float max { 1.f }; float defaultValue { 1.f }; ParamType type { dB }; const char* name; const char* id; };
     
     template <typename Func, typename... Items>
     constexpr void forEach (Func&& func, Items&&... items)
@@ -167,36 +167,29 @@ namespace sadistic {
             memset(processorFifo, 0.f, sizeof(processorFifo));
             memset(editorBuffer, 0.f, sizeof(editorBuffer));
         }
-        void loadChannel(const FloatType* fifoData, int startIndex) {
+        void copyMostRecentSamples(const FloatType* fifoData, int startIndex) {
             std::copy(fifoData + startIndex, fifoData + fifoSize, editorBuffer);
             if (startIndex != 0) std::copy(fifoData, fifoData + startIndex, editorBuffer + fifoSize - startIndex);
         }
-        template <typename F> void pushChannel (const AudioBuffer<F>& newBlock) {
-            for (int i { 0 }; i < newBlock.getNumSamples(); ++i) {
-                const auto sample = static_cast<FloatType>(jlimit(F(-1), F(1), newBlock.getSample(0, i)));
-                pushNextSampleIntoFifo(sample);
+        template <typename F> void pushChannel (const AudioBuffer<F>& newBuffer) {
+            for (int i { 0 }; i < newBuffer.getNumSamples(); ++i)
+                processorFifo[fifoIndex + i] = static_cast<FloatType>(jlimit(F(-1), F(1), newBuffer.getSample(0, i)));
+            
+            fifoIndex = (fifoIndex + newBuffer.getNumSamples()) % fifoSize;
+            
+            if (!bufferReadyForEditor) {
+                copyMostRecentSamples(processorFifo, fifoIndex);
+                bufferReadyForEditor = true;
             }
         }
         FloatType* getBlock() { if(bufferReadyForEditor) return editorBuffer; else return nullptr; }
         void finishedReading() { bufferReadyForEditor = false; }
-        void pushNextSampleIntoFifo (FloatType sample) noexcept {
-            if (fifoCounter > 1023) {
-                fifoCounter = 0;
-                if (!bufferReadyForEditor) {
-                    loadChannel(processorFifo, fifoIndex);
-                    bufferReadyForEditor = true;
-                }
-                fifoIndex = (fifoIndex + 1024) % fifoSize;
-            }
-            processorFifo[fifoCounter + fifoIndex] = sample;
-            ++fifoCounter;
-        }
         bool isLoaded() { return bufferReadyForEditor; }
         
     private:
         FloatType editorBuffer[fifoSize] {};
         FloatType processorFifo[fifoSize] {};
-        int fifoCounter { 0 }, fifoIndex { 0 };
+        int fifoIndex { 0 };
         std::atomic<bool> bufferReadyForEditor { false };
     };
     
@@ -285,4 +278,4 @@ namespace sadistic {
         std::unique_ptr<Drawable> icon;
         float angle;
     };
-}
+} // namespace sadistic

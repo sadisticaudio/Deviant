@@ -6,7 +6,8 @@ namespace sadistic {
     
     using namespace juce::gl;
     
-    struct ScopeRenderer :  public Component, public juce::OpenGLRenderer {
+    class ScopeRenderer :  public Component, public juce::OpenGLRenderer {
+    public:
         
         static constexpr int scopeSize { SCOPESIZE };
         
@@ -15,18 +16,20 @@ namespace sadistic {
             openGLContext.setOpenGLVersionRequired (OpenGLContext::OpenGLVersion::openGL3_2);
             openGLContext.setRenderer(this);
             openGLContext.attachTo(*this);
+            openGLContext.setContinuousRepainting(true);
         }
+        void start() {  }
+        void resized() override { getMatrix(); }
         ~ScopeRenderer() override { openGLContext.detach(); }
-
-		void start() { openGLContext.setContinuousRepainting(true); }
+        void openGLContextClosing() override { moonShader->release(); waveShader->release(); moonTexture.release(); }
 
         void getMatrix(float angle = 1.f) {
             const auto rotation { Matrix3D<float>::rotation({ MathConstants<float>::halfPi/4.f/angle, MathConstants<float>::halfPi/2.f, 0.f }) };
             const auto view { Matrix3D<float>(Vector3D<float>(0.0f, 0.0f, -10.0f)) }, viewMatrix { rotation * view };
             const auto scaleFactor { 4.f }, w { 1.f / scaleFactor }, h { w * 1.2f * getLocalBounds().toFloat().getAspectRatio (false) };
             const auto projectionMatrix { Matrix3D<float>::fromFrustum (-w, w, -h, h, 4.0f, 20.0f) };
-            matrix = viewMatrix * projectionMatrix; }
-        void resized() override { getMatrix(); }
+            matrix = viewMatrix * projectionMatrix;
+        }
         
         void newOpenGLContextCreated() override {
             moonTexture.loadImage(ImageFileFormat::loadFrom (Data::moonStrip_png, Data::moonStrip_pngSize));
@@ -49,8 +52,6 @@ namespace sadistic {
             }
             for (GLuint signal = 0; signal < numSignals; ++signal)  openGLContext.extensions.glGenBuffers (1, &vbo[signal]);
         }
-        
-        void openGLContextClosing() override { moonShader->release(); waveShader->release(); moonTexture.release(); }
         
         void renderOpenGL() override {
             jassert (OpenGLHelpers::isContextActive());
@@ -118,9 +119,16 @@ namespace sadistic {
             const auto frame { scopeBuffer[signal].getFrameToRead() };
             if (frame) {
                 //set wave vertex data
-                for (GLuint i = 0; i < (scopeSize-1); ++i) {
+                for (GLuint i = 0; i < (scopeSize - 1); ++i) {
                     vertices[signal][i*3].position[1] = frame[i]/2.f;
                     vertices[signal][i*3+2].position[1] = frame[(i+1)]/2.f;
+                }
+                //clear partial buffers
+                if (frame[0] == 0.f || frame[scopeSize - 1] == 0.f) {
+                    for (GLuint i = 0; i < (scopeSize - 1); ++i) {
+                        vertices[signal][i*3].position[1] = 0.f;
+                        vertices[signal][i*3+2].position[1] = 0.f;
+                    }
                 }
                 scopeBuffer[signal].finishedRendering(frame);
             }
@@ -141,5 +149,4 @@ namespace sadistic {
         
         JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ScopeRenderer)
     };
-}
-
+} // namespace sadistic

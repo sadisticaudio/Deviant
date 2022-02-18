@@ -5,82 +5,59 @@
 #include "../sadistic/SadisticUnlockform.h"
 #endif
 
-
 namespace sadistic {
     
     enum { wetSignal = 0, drySignal, numSignals };
-    enum { maxCoeffs = 8, numFX = 5 };
+    enum { maxParams = 5, numFX = 5, maxCoeffs = 8 };
     enum { GAINLENGTH = 256 };
     
-    static inline const Colour wetSignalColour { Colour::fromFloatRGBA(0.f, 0.9f, 0.9f, 1.f) }, drySignalColour { Colour::fromFloatRGBA(0.8f, 0.9f, 0.1f, 1.f) };
+    struct EffectInfo { bool defaultEnabled; int defaultRoute; int defaultIndex; float defaultBlend; const char* name; const char* id; };
 
-    struct IDs {
-        static inline const Identifier currentScreen { "currentScreen" };
-    };
-    struct EffectInfo { bool defaultEnabled; int defaultRoute; int defaultIndex; float defaultBlend; int numParams; };
-    
-    constexpr const char* fxName[] {
-        "Static Atan",
-        "Static Bit Crusher",
-        "Static Clipper",
-        "Static Deviation",
-        "Static Hyperbolic",
-        "Main"
-    };
-    
-    constexpr const char* fxID[] {
-        "staticAtan",
-        "staticBitCrusher",
-        "staticClipper",
-        "staticDeviation",
-        "staticHyperbolic",
-        "main"
-    };
-    
     constexpr EffectInfo effectInfo[] {
-        { true, 2, 0, 1.f, 3 },
-        { true, 2, 1, 1.f, 3 },
-        { true, 2, 2, 1.f, 3 },
-        { true, 2, 3, 1.f, 3 },
-        { true, 2, 4, 1.f, 3 },
-        { true, 4, 0, 1.f, 1 }
+        { true, 2, 0, 1.f, "Static Atan", "staticAtan" },
+        { true, 2, 1, 1.f, "Static Bit Crusher", "staticBitCrusher" },
+        { true, 2, 2, 1.f, "Static Clipper", "staticClipper" },
+        { true, 2, 3, 1.f, "Static Deviation", "staticDeviation" },
+        { true, 2, 4, 1.f, "Static Hyperbolic", "staticHyperbolic" },
+        { true, 4, 0, 1.f, "Main", "main" }
     };
     
-    constexpr const char* paramName[][4] {
-        { "Drive", "Low Cutoff", "High Cutoff" },
-        { "Drive", "Low Cutoff", "High Cutoff" },
-        { "Drive", "Low Cutoff", "High Cutoff" },
-        { "Drive", "Low Cutoff", "High Cutoff" },
-        { "Drive", "Low Cutoff", "High Cutoff" },
-        { "Blend" }
+    constexpr ParamInfo paramInfo[][maxParams] {
+        { { ParamInfo::NA, 0.f, 111.f, 0.f, "Drive", "Drive" },
+            { ParamInfo::Hz, 20.f, 20000.f, 20.f, "Low Cutoff", "Low" },
+            { ParamInfo::Hz, 20.f, 20000.f, 20000.f, "High Cutoff", "High" },
+            { ParamInfo::NA, 0.f, 100.f, 0.f, "Deviation", "Deviation" } },
+        { { ParamInfo::NA, 0.f, 111.f, 0.f, "Drive", "Drive" },
+            { ParamInfo::Hz, 20.f, 20000.f, 20.f, "Low Cutoff", "Low" },
+            { ParamInfo::Hz, 20.f, 20000.f, 20000.f, "High Cutoff", "High" },
+            { ParamInfo::NA, 0.f, 100.f, 0.f, "Deviation", "Deviation" } },
+        { { ParamInfo::NA, 0.f, 111.f, 0.f, "Drive", "Drive" },
+            { ParamInfo::Hz, 20.f, 20000.f, 20.f, "Low Cutoff", "Low" },
+            { ParamInfo::Hz, 20.f, 20000.f, 20000.f, "High Cutoff", "High" },
+            { ParamInfo::NA, 0.f, 100.f, 0.f, "Deviation", "Deviation" } },
+        { { ParamInfo::NA, 0.f, 111.f, 0.f, "Drive", "Drive" },
+            { ParamInfo::Hz, 20.f, 20000.f, 20.f, "Low Cutoff", "Low" },
+            { ParamInfo::Hz, 20.f, 20000.f, 20000.f, "High Cutoff", "High" },
+            { ParamInfo::NA, 0.f, 100.f, 0.f, "Deviation", "Deviation" } },
+        { { ParamInfo::NA, 0.f, 111.f, 0.f, "Drive", "Drive" },
+            { ParamInfo::Hz, 20.f, 20000.f, 20.f, "Low Cutoff", "Low" },
+            { ParamInfo::Hz, 20.f, 20000.f, 20000.f, "High Cutoff", "High" },
+            { ParamInfo::NA, 0.f, 100.f, 0.f, "Deviation", "Deviation" } },
+        { { ParamInfo::Pct, 0.f, 1.f, 1.f, "Blend", "Blend" } }
     };
     
-    constexpr const char* paramID[][4] {
-        { "Drive", "Low", "High" },
-        { "Drive", "Low", "High" },
-        { "Drive", "Low", "High" },
-        { "Drive", "Low", "High" },
-        { "Drive", "Low", "High" },
-        { "Blend" }
-    };
+    constexpr int getNumParamsForEffect(int effectIndex) { return sizeof(paramInfo[effectIndex]) / sizeof(ParamInfo); }
     
-    constexpr ParamInfo paramInfo[][4] {
-        { { 0.f, 111.f, 0.f, ParamInfo::dB }, { 20.f, 20000.f, 20.f, ParamInfo::Hz }, { 20.f, 20000.f, 20000.f, ParamInfo::Hz } },
-        { { 0.f, 111.f, 0.f, ParamInfo::dB }, { 20.f, 20000.f, 20.f, ParamInfo::Hz }, { 20.f, 20000.f, 20000.f, ParamInfo::Hz } },
-        { { 0.f, 111.f, 0.f, ParamInfo::dB }, { 20.f, 20000.f, 20.f, ParamInfo::Hz }, { 20.f, 20000.f, 20000.f, ParamInfo::Hz } },
-        { { 0.f, 111.f, 0.f, ParamInfo::dB }, { 20.f, 20000.f, 20.f, ParamInfo::Hz }, { 20.f, 20000.f, 20000.f, ParamInfo::Hz } },
-        { { 0.f, 111.f, 0.f, ParamInfo::dB }, { 20.f, 20000.f, 20.f, ParamInfo::Hz }, { 20.f, 20000.f, 20000.f, ParamInfo::Hz } },
-        { { 0.f, 1.f, 1.f, ParamInfo::dB } }
-    };
-    
-    inline String getFxID(int effectIndex) { return { fxID[effectIndex] }; }
-    inline String getFxName(int effectIndex) { return { fxName[effectIndex] }; }
-    inline String getParamID(int eIndex, int pIndex) { return { getFxID(eIndex) + String(paramID[eIndex][pIndex]) }; }
-    inline String getParamName(int eIndex, int pIndex) { return { getFxName(eIndex) + " " + String(paramName[eIndex][pIndex]) }; }
+    inline String getFxID(int effectIndex) { return { effectInfo[effectIndex].id }; }
+    inline String getFxName(int effectIndex) { return { effectInfo[effectIndex].name }; }
+    inline String getParamID(int eIndex, int pIndex) { return { getFxID(eIndex) + String(paramInfo[eIndex][pIndex].id) }; }
+    inline String getParamName(int eIndex, int pIndex) { return { getFxName(eIndex) + " " + String(paramInfo[eIndex][pIndex].name) }; }
     inline String makeLabel(String name, String label = String()) {
         for (int i { 0 }; i < name.length(); ++i) { label += name[i]; if (i != name.length() - 1) label += " "; }
         return label.toUpperCase(); }
-    inline String getSuffix(ParamInfo::ParamType pT) { return pT == dB ? "dB" : pT == Hz ? "Hz" : "%"; }
+    inline String getSuffix(ParamInfo::ParamType pT) { return pT == ParamInfo::dB ? "dB" : pT == ParamInfo::Hz ? "Hz" : pT == ParamInfo::Pct ? "%" : pT == ParamInfo::NA ? "" : ""; }
+    
+    static inline const Colour wetSignalColour { Colour::fromFloatRGBA(0.f, 0.9f, 0.9f, 1.f) }, drySignalColour { Colour::fromFloatRGBA(0.8f, 0.9f, 0.1f, 1.f) };
     
     template <typename Param, typename ListType, typename ...Ts>
     static void addParameter (APVTS::ParameterLayout& layout, ListType& pList, Ts... ts) {
@@ -111,168 +88,100 @@ namespace sadistic {
         theWindow.multiplyWithWindowingTable (c, order + 1);
         return result;
     };
-
-    template<typename F> inline F rround(F f) { return f > F(0) ? floor (f + F(0.5)) : ceil(f - F(0.5)); }
-    template<typename F> inline F fastatan( F x ) { return (F(2)/MathConstants<F>::pi) * atan(x * MathConstants<F>::halfPi); }
     
-    struct Atan {
-        static inline void calculateCoefficients(float(& coeffs)[maxCoeffs]) {
-            auto& [drive, lo, hi, mDrive, noName4, mag, attenuation, blend] = coeffs;
-            mDrive = powf(drive/111.f, 2.f);
-            attenuation = jmap(powf(drive/111.f, 0.08f), 1.f, 0.14f); }
-        template<typename F> static inline F processSample(const F sample, const float (&coeffs)[maxCoeffs]) {
-            const auto& [drive, lo, hi, mDrive, noName4, mag, attenuation, blend] = coeffs;
-            const auto x { static_cast<float>(sample) };
-            return fastatan(x * (1.f + mDrive * 144.f)) * attenuation * blend + x * (1.f - blend); }
+    struct Wanderer {
+        void startNewJaunt() {
+            jauntLength = std::rand() % (maxLength - minLength) + minLength;
+            currentMaxMult = static_cast <float> (rand()) / static_cast <float> (RAND_MAX) * (maxMult - minMult) + minMult;
+            goingOutward = true;
+            goingUp = goingUp ? false : true;
+        }
+        float getWanderingValue(float val) {
+            float returnVal { val };
+            if (val != 0.f) {
+                if (jauntCounter == 0)
+                    startNewJaunt();
+                else {
+                    if (jauntCounter == jauntLength)
+                        goingOutward = false;
+                    float mult = powf(currentMaxMult, float(jauntCounter) / float(jauntLength));
+                    jassert(mult != 0.f);
+                    if (goingUp)
+                        returnVal = jlimit(0.f, 1.f, val * mult);
+                    else
+                        returnVal = jlimit(0.f, 1.f, val / mult);
+                }
+                jauntCounter += (goingOutward ? 1 : -1);
+            }
+            return returnVal;
+        }
+        void setDeviation(float deviation) {
+            if (deviation == 0.f) jauntCounter = 0;
+            else {
+                float normalizedDeviation { deviation / 100.f };
+                minLength = 400 - static_cast<int>(395.f * normalizedDeviation);
+                maxLength = 600 + static_cast<int>(400.f * normalizedDeviation);
+                if (normalizedDeviation > 0.75f)
+                    maxLength = 900 - static_cast<int>(890.f * ((normalizedDeviation - 0.75f) * 4.f));
+                maxMult = 1.1f + 5.f * normalizedDeviation;
+            }
+        }
+        int minLength { 400 }, maxLength { 600 }, jauntCounter { 0 }, jauntLength { minLength + (minLength + maxLength) / 2 };
+        float minMult { 1.01f }, maxMult { 1.1f }, currentMaxMult { minMult + (minMult + maxMult) / 2.f };
+        bool isWandering { false }, goingOutward { false }, goingUp { false };
     };
     
-    struct Crusher {
-        static inline void calculateCoefficients(float(& coeffs)[maxCoeffs]) {
-            auto& [drive, lo, hi, mDrive, max, mag, attenuation, blend] = coeffs;
-            mDrive = powf(((drive * 0.75f)/111.f) * 0.75f - 1.f, 16.f) * 1024.f + 1.f;
-            attenuation = 1.f - 0.3f * (drive/111.f); }
-        template<typename F> static inline F processSample(const F sample, const float (&coeffs)[maxCoeffs]) {
-            const auto& [drive, lo, hi, mDrive, max, mag, attenuation, blend] = coeffs;
-            const auto x { static_cast<float>(sample) };
-            return (rround((x/mag + 1.f) * mDrive) / mDrive - 1.f) * mag * attenuation * blend + x * (1.f - blend); }
-    };
-    
-    struct Clipper {
-        static inline void calculateCoefficients(float(& coeffs)[maxCoeffs]) {
-            auto& [drive, lo, hi, mDrive, noName4, mag, attenuation, blend] = coeffs;
-            mDrive = powf(drive/111.f, 2.f);
-            attenuation = jmap(powf(mDrive, 0.04f), 1.f, 0.14f); }
-        template<typename F> static inline F processSample(const F sample, const float (&coeffs)[maxCoeffs]) {
-            const auto& [drive, lo, hi, mDrive, noName4, mag, attenuation, blend] = coeffs;
-            const auto x { static_cast<float>(sample) };
-            return jlimit(-1.f, 1.f, x * (1.f + mDrive * 144.f)) * attenuation * blend + x * (1.f - blend); }
-    };
-    
-    struct Deviation {
-        static inline void calculateCoefficients(float(& coeffs)[maxCoeffs]) {
-            auto& [drive, lo, hi, mDrive, noName4, mag, attenuation, blend] = coeffs;
-            mDrive = sadSymmetricSkew(drive/111.f, -0.96f);
-            attenuation = jmap(powf(drive/111.f * 0.5f, 0.1f), 1.f, 0.03f); }
-        template<typename F> static inline F processSample(const F sample, const float (&coeffs)[maxCoeffs]) {
-            const auto& [drive, lo, hi, mDrive, noName4, mag, attenuation, blend] = coeffs;
-            const auto x { static_cast<float>(sample) };
-            return (-1.f + (2.f/(1.f + 1.f * powf(FastMathApproximations::exp(-2.f * x), 1.f + mDrive * 3000.f)))) * attenuation * blend + x * (1.f - blend); }
-    };
-    
-    struct Hyperbolic {
-        static inline void calculateCoefficients(float(& coeffs)[maxCoeffs]) {
-            auto& [drive, lo, hi, mDrive, noName4, mag, attenuation, blend] = coeffs;
-            mDrive = drive/111.f;
-            attenuation = jmap(powf(drive/111.f, 0.08f), 1.f, 0.14f); }
-        template<typename F> static inline F processSample(const F sample, const float (&coeffs)[maxCoeffs]) {
-            const auto& [drive, lo, hi, mDrive, noName4, mag, attenuation, blend] = coeffs;
-            const auto x { static_cast<float>(sample) };
-            return FastMathApproximations::tanh(x * (1.f + powf(mDrive, 2.f) * 144.f)) * attenuation * blend + x * (1.f - blend); }
-    };
-    
-    template<typename Cs, typename F>
-    inline F shapeSample(const Cs& aC, const Cs& bC, const Cs& cC, const Cs& dC, const Cs& hC, F sample, F blend = 1.f) {
-        return blend * Hyperbolic::processSample(Clipper::processSample(Deviation::processSample(Atan::processSample(Crusher::processSample(sample, bC), aC), dC), cC), hC) + (F(1) - blend) * sample; }
-    
-    struct DeviantEffect {
+    class DeviantEffect {
+    public:
         DeviantEffect(String eID, ParamList refs, FloatParamList floatRefs, int eIDX) : effectID(eID), effectIndex(eIDX), defaults(refs), params(floatRefs) {}
         DeviantEffect(DeviantEffect& other) : effectID(other.effectID), effectIndex(other.effectIndex), defaults(other.defaults), params(other.params) {}
         virtual ~DeviantEffect() {}
-        bool operator<(const DeviantEffect& other) {
-            if (getRoute() < other.getRoute()) return true;
-            else if (getRoute() == other.getRoute() && getIndex() < other.getIndex()) return true;
-            return false;
-        }
         virtual void prepare(const ProcessSpec&) {}
-        virtual void processSamples(AudioBuffer<float>&) = 0;
-        virtual void processSamples(AudioBuffer<double>&) = 0;
-        void process(AudioBuffer<float>& buffer) { if (isEnabled()) { if (parametersNeedCooking()) cookParameters(); processSamples(buffer); } }
-        void process(AudioBuffer<double>& buffer) { if (isEnabled()) { if (parametersNeedCooking()) cookParameters(); processSamples(buffer); } }
         virtual void reset() {}
         virtual void calculateCoefficients() {}
-        virtual int getLatency() { return 0; }
-        bool isEnabled() const   { return static_cast<AudioParameterBool&>(defaults[0].get()).get(); }
-        int getRoute() const     { return static_cast<AudioParameterInt&>(defaults[1].get()).get(); }
-        int getIndex() const     { return static_cast<AudioParameterInt&>(defaults[2].get()).get(); }
-        float getBlend() const   { return static_cast<AudioParameterFloat&>(defaults[3].get()).get(); }
+        virtual void processSamples(AudioBuffer<float>&) = 0;
+        virtual void processSamples(AudioBuffer<double>&) = 0;
+        template<typename F> void process(AudioBuffer<F>& buffer) {
+            if (isEnabled()) { if (parametersNeedCooking()) cookParameters(); processSamples(buffer); } }
+        virtual int getLatency() const          { return 0; }
+        auto& getRange(size_t idx) const        { return params[idx].get().getNormalisableRange(); }
+        bool isEnabled() const                  { return static_cast<AudioParameterBool&>(defaults[0].get()).get(); }
+        int getRoute() const                    { return static_cast<AudioParameterInt&>(defaults[1].get()).get(); }
+        int getIndex() const                    { return static_cast<AudioParameterInt&>(defaults[2].get()).get(); }
+        float getBlend() const                  { return static_cast<AudioParameterFloat&>(defaults[3].get()).get(); }
+        float getParam(size_t idx) const        { return params[idx].get().get(); }
+        float getNormal(size_t idx) const       { return getRange(idx).convertTo0to1(getParam(idx)); }
         void setMagnitudeCoefficient(float mag) { coeffs[5] = mag; }
         void init() {
-            for (size_t i { 0 }; i < params.size(); ++i) coeffs[i] = params[i].get().get();
+            for (size_t i { 0 }; i < params.size(); ++i) coeffs[i] = getParam(i);
             coeffs[7] = getBlend();
             calculateCoefficients();
-            cookParameters();
         }
         bool parametersNeedCooking() const {
             bool needsUpdate { false };
-            for (size_t i { 0 }; i < params.size(); ++i) if (coeffs[i] != params[i].get().get()) needsUpdate = true;
+            for (size_t i { 0 }; i < params.size(); ++i) if (coeffs[i] != getParam(i)) needsUpdate = true;
             if (coeffs[7] != getBlend()) needsUpdate = true;
+            if (coeffs[3] != 0.f) needsUpdate = true;
             return needsUpdate;
         }
         void cookParameters() {
             for (size_t i { 0 }; i < params.size(); ++i) {
-                const float currentValue { params[i].get().get() };
-                const float smoothed { coeffs[i] };
-                if (currentValue != smoothed) {
-                    const float maxDelta { (params[i].get().getNormalisableRange().end - params[i].get().getNormalisableRange().start) / maxDeltaDivisor };
-                    coeffs[i] = jlimit(smoothed - maxDelta, smoothed + maxDelta, currentValue);
+                if (getParam(i) != coeffs[i]) {
+                    const float maxDelta { (getRange(i).end - getRange(i).start) / maxDeltaDivisor };
+                    coeffs[i] = jlimit(coeffs[i] - maxDelta, coeffs[i] + maxDelta, getParam(i));
                 }
             }
-            const float currentValue { getBlend() };
-            const float smoothed { coeffs[7] };
-            if (currentValue != smoothed) {
-                const float maxDelta { (defaults[3].get().getNormalisableRange().end - defaults[3].get().getNormalisableRange().start) / maxDeltaDivisor };
-                coeffs[7] = jlimit(smoothed - maxDelta, smoothed + maxDelta, currentValue);
-            }
+            if (getBlend() != coeffs[7])
+                coeffs[7] = jlimit(coeffs[7] - (1.f / maxDeltaDivisor), coeffs[7] + (1.f / maxDeltaDivisor), getBlend());
             calculateCoefficients();
         }
+        float coeffs[maxCoeffs] { 0.f, 20.f, 20000.f, 0.f, 0.f, 1.f, 1.f, 1.f };
+    private:
         String effectID;
-        const float maxDeltaDivisor { 50.f };
+        static constexpr float maxDeltaDivisor { 50.f };
         int effectIndex;
         ParamList defaults;
         FloatParamList params;
-        float coeffs[maxCoeffs] { 0.f, 20.f, 20000.f, 0.f, 0.f, 1.f, 1.f, 1.f };
-    };
-    
-    struct TableManager {
-        using UM = UndoManager;
-        static constexpr int gainLength { GAINLENGTH };
-        
-        TableManager(APVTS& a, std::atomic<int>* cI, float(& cS)[numFX][maxCoeffs][maxCoeffs]) : apvts(a), coeffIdx(cI), coeffs(cS) {
-            for (int i { 0 }; i <= gainLength; ++i) inputTable[i] = -1.f + 2.f * float(i) / float(gainLength); }
-        
-        template <typename F> void makeStaticTable(F* dest = nullptr) {
-            const auto& atanCoeffs { coeffs[0][int(coeffIdx[0])] };
-            const auto& crusherCoeffs { coeffs[1][int(coeffIdx[1])] };
-            const auto& clipperCoeffs { coeffs[2][int(coeffIdx[2])] };
-            const auto& deviationCoeffs { coeffs[3][int(coeffIdx[3])] };
-            const auto& hyperbolicCoeffs { coeffs[4][int(coeffIdx[4])] };
-            makeTable(atanCoeffs, crusherCoeffs, clipperCoeffs, deviationCoeffs, hyperbolicCoeffs, gainTable);
-            if (dest) for (size_t i { 0 }; i <= size_t(gainLength); ++i) dest[i] = static_cast<F>(gainTable[i]);
-            int extremity;
-            const int indexOfMax { static_cast<int>(std::distance(gainTable,std::max_element(gainTable, gainTable + gainLength + 1))) };
-            const int indexOfMin { static_cast<int>(std::distance(gainTable,std::min_element(gainTable, gainTable + gainLength + 1))) };
-            if(abs(gainTable[indexOfMax]) > abs(gainTable[indexOfMin])) extremity = indexOfMax;
-            else extremity = indexOfMin;
-            const auto mag { abs(gainTable[extremity]) }, magDB { Decibels::gainToDecibels(mag) }, mult { 1.f - -magDB/100.f };
-            waveMult = powf(mult, 7.f);
-            newGUIDataHere = true;
-        }
-        
-        template<typename COEFFS, typename F>
-        void makeTable(const COEFFS& aC, const COEFFS& bC, const COEFFS& cC, const COEFFS& dC, const COEFFS& hC, F* table, float shaperBlend = 1.f) {
-            const auto blend { static_cast<F>(shaperBlend) };
-            for (int i { 0 }; i <= gainLength; ++i) {
-                const auto gainSample { static_cast<F>(-1.f + 2.f * float(i) / float(gainLength)) };
-                table[i] = blend * shapeSample(aC, bC, cC, dC, hC, gainSample) + (F(1.0) - blend) * gainSample;
-            }
-        }
-        
-        APVTS& apvts;
-        float inputTable[gainLength + 1], gainTable[gainLength + 1];
-        float waveMult { 1.f };
-        std::atomic<bool> newGUIDataHere { true };
-        std::atomic<int>* coeffIdx;
-        float(& coeffs)[numFX][maxCoeffs][maxCoeffs];
     };
     
     ////////////////     GRAPHICS      ////////////////////////////////////////////////////////
@@ -281,41 +190,40 @@ namespace sadistic {
         void mouseEnter(const MouseEvent&) override { showMouseOver(); repaint(); }
         void mouseExit(const MouseEvent&) override { hideMouseOver(); repaint(); }
         void setMouseOverLabels(String left, String right) { mouseOverLeft = left; mouseOverRight = right; }
+
         String mouseOverLeft, mouseOverRight;
         std::function<void ()> showMouseOver { []{} }, hideMouseOver { []{} };
     };
     
-    struct FilterKnob : public DeviantSlider   {
+    struct FilterKnob : public DeviantSlider {
         FilterKnob(const char* svg) : icon(makeIcon(svg)) {
             icon->replaceColour(Colours::blue, Colours::blue.withAlpha(0.f));
             setColour(Colours::grey.darker());
         }
         void setColour(Colour c) { icon->replaceColour(colour, c); colour = c; }
-        void mouseEnter(const MouseEvent& e) override { setColour(Colours::white.darker()); DeviantSlider::mouseEnter(e);; }
+        void mouseEnter(const MouseEvent& e) override { setColour(Colours::white.darker()); DeviantSlider::mouseEnter(e); }
         void mouseExit(const MouseEvent& e) override { setColour(Colours::grey.darker()); DeviantSlider::mouseExit(e); }
-        void setMouseOverLabels(String left, String right) { mouseOverLeft = left; mouseOverRight = right; }
-        std::unique_ptr<Drawable> icon;
+        
         Colour colour { Colours::black };
+        std::unique_ptr<Drawable> icon;
     };
-    
-    template <typename T> String freqStringInt(T i) {
-        if (i > 1001) {
+
+    template <typename FloatType> String freqString(FloatType val) {
+        String returnString = String(val,2);
+        if (val >= 1000) {
+            int i { static_cast<int>(val) };
             int first =(int)(i / 1000);
             auto remainder = i - first * 1000;
-            if (i > 10000 || (int)(i / 1000) == (float) i / 1000.f) return String(String(i).dropLastCharacters(3)+ "K");
-            else return String(String(i).dropLastCharacters(3)+ "." + String(remainder).dropLastCharacters(2) + "K");
+            if (i > 10000 || (int)(i / 1000) == (float) i / 1000.f)
+                returnString = String(String(i).dropLastCharacters(3));
+            else
+                returnString = String(String(i).dropLastCharacters(3) + ((remainder < 100) ? "" : ".") + String(remainder).dropLastCharacters(2));
+            return { returnString + "K" };
         }
-        else return String(i);
-    }
-    
-    template <typename FloatType> String freqString(FloatType i) {
-        String returnString = String();
-        if (i < 10.0) returnString = String(i,2);
-        else if (i < 1000.0) returnString = String(i,1).dropLastCharacters(2);
-        else returnString = freqStringInt(static_cast<int>(i));
+        else if (val >= 10) return String(val,1).dropLastCharacters(2);
         return returnString;
     }
-    struct EmpiricalLAF    : public LookAndFeel_V4   {
+    struct EmpiricalLAF : public LookAndFeel_V4 {
         EmpiricalLAF() {
             const char* nums[numNumbers] { Data::zero_svg, Data::one_svg, Data::two_svg, Data::three_svg, Data::four_svg, Data::five_svg, Data::six_svg, Data::seven_svg, Data::eight_svg, Data::nine_svg, Data::zero_svg, Data::one_svg };
             for (auto& one : onesPlaceNums) { one = makeIcon(Data::zero_svg); one->replaceColour(Colours::black, Colours::white); }
@@ -327,19 +235,21 @@ namespace sadistic {
         void drawRotarySlider (Graphics&, int, int, int, int, float, float, float, Slider&) override;
         std::unique_ptr<Drawable> onesPlaceNums[numNumbers], tensPlaceNums[numNumbers], hundredsPlaceNums[2];
     };
-    struct FilterLAF    : public LookAndFeel_V4   {
+    struct FilterLAF : public LookAndFeel_V4 {
         void drawRotarySlider (Graphics&, int, int, int, int, float, float, float, Slider&) override;
         void drawLinearSlider (Graphics&, int, int, int, int, float, float, float, const Slider::SliderStyle, Slider&) override; };
 
-    struct EmpiricalSlider : public DeviantSlider   {
+    struct EmpiricalSlider : public DeviantSlider {
         EmpiricalSlider(bool l = false, bool s = false, bool h = false) : isLeft(l), isSmall(s), isDefaultHigh(h) {}
+        bool hitTest (int x, int y) override;
         float getNormalisedValue() {
             auto range { NormalisableRange<double>(getRange()) };
             return static_cast<float>(range.convertTo0to1(getValue())); }
-        bool isLeft, isSmall, isDefaultHigh; public: bool hitTest (int x, int y) override;
+        
+        bool isLeft, isSmall, isDefaultHigh;
     };
 
-    class TransLabel  : public Label    {public: bool hitTest (int x, int y) override;};
+    class TransLabel : public Label { public: bool hitTest (int x, int y) override; };
     void showEmpiricalValue(Slider& slider, Label& label1, Component& child);
     void hideValue(Label& valueLabel, Label& suffixLabel);
     void hideValue(Label& valueLabel, Component& child);
@@ -358,7 +268,8 @@ namespace sadistic {
         label2.setText (slider.getTextValueSuffix(), dontSendNotification);
     }
 
-    struct SadButton : public Button {
+    class SadButton : public Button {
+    public:
         SadButton(bool iL = false) : Button("displays"), isLeft(iL) {}
         void mouseEnter(const MouseEvent&) override {
             colour = Colours::white.darker();
@@ -380,12 +291,14 @@ namespace sadistic {
             g.setColour(colour);
             g.strokePath(p,PathStrokeType(2.f));
         }
+    private:
         Colour colour { Colours::grey };
         const bool isLeft;
     };
     
-    struct SadLabel : public Component {
-        SadLabel(String text={}, bool iV={}, bool iL={}, float r={}) : isVertical(iV), isLeft(iL), angle(r) {
+    class SadLabel : public Component {
+    public:
+        SadLabel(String text={}, bool iV={}, float r={}) : isVertical(iV), angle(r) {
             label.setText(text, dontSendNotification);
             label.setJustificationType(Justification::centred);
             addAndMakeVisible(label);
@@ -398,19 +311,22 @@ namespace sadistic {
         }
         void resized() override {
             auto bounds { getLocalBounds() };
-            if(!isVertical) label.setBounds(bounds);
+            if(!isVertical)
+                label.setBounds(bounds);
             else {
                 label.setBounds(Rectangle<int>(bounds.getHeight(), bounds.getWidth()).withCentre(bounds.getCentre()));
                 label.setTransform(AffineTransform::rotation(MathConstants<float>::pi * angle, label.getBounds().getCentreX(), label.getBounds().getCentreY()));
-            } }
+            }
+        }
         Label label;
-        const bool isVertical, isLeft;
+    private:
+        const bool isVertical;
         float angle;
         std::unique_ptr<Drawable> icon;
     };
     
     struct SadTextButton : public TextButton {
-        SadTextButton(const String& s, bool iV={}, bool iL={}, float r={}) : label(s, iV, iL, r), isLeft(iL) {
+        SadTextButton(const String& s, bool iV={}, bool iL={}, float r={}) : label(s, iV, r), isLeft(iL) {
             addAndMakeVisible(label);
         }
         void mouseEnter(const MouseEvent&) override {
@@ -432,5 +348,4 @@ namespace sadistic {
         SadLabel label;
         const bool isLeft;
     };
-}
-
+} // namespace sadistic

@@ -1,50 +1,35 @@
 #include "deviant.h"
 
-void sadistic::FilterLAF::drawLinearSlider (Graphics& g, int x, int y, int width, int height, float sliderPos, float, float, const Slider::SliderStyle, Slider& slider)  {
-    auto trackWidth = jmin (4.0f, slider.isHorizontal() ? height * 0.25f : width * 0.25f);
-    Point<float> startPoint (slider.isHorizontal() ? x : x + width * 0.5f, slider.isHorizontal() ? y + height * 0.5f : height + y);
-    Point<float> endPoint (slider.isHorizontal() ? width + x : startPoint.x, slider.isHorizontal() ? startPoint.y : y);
-    Path backgroundTrack;
-    backgroundTrack.startNewSubPath (startPoint);
-    backgroundTrack.lineTo (endPoint);
-    g.setColour (slider.findColour (Slider::backgroundColourId));
-    g.strokePath (backgroundTrack, { trackWidth, PathStrokeType::curved, PathStrokeType::rounded });
-    
-    Path valueTrack;
-    Point<float> minPoint, maxPoint;
-    auto kx = slider.isHorizontal() ? sliderPos : (x + width * 0.5f);
-    auto ky = slider.isHorizontal() ? (y + height * 0.5f) : sliderPos;
-    minPoint = startPoint;
-    maxPoint = { kx, ky };
-    valueTrack.startNewSubPath (minPoint);
-    valueTrack.lineTo (maxPoint);
-    g.setColour (Colour(0xaa000000));
-    g.strokePath (valueTrack, { trackWidth, PathStrokeType::curved, PathStrokeType::rounded });
-    
-//    auto colour { slider.findColour (Slider::thumbColourId) };
-    
+void sadistic::FilterLAF::drawLinearSlider (Graphics& g, int x, int y, int width, int height, float sliderPos, float a, float b, const Slider::SliderStyle style, Slider& slider)  {
+    LookAndFeel_V4::drawLinearSlider(g, x, y, width, height, sliderPos, a, b, style, slider);
+    Point<float> maxPoint { sliderPos, y + height * 0.5f };
     auto thumbWidth = getSliderThumbRadius (slider);
-    
-    Colour thumbColour { Colours::grey };
-    
+
     if (slider.isMouseOver()) {
-        float dryRGB[] { drySignalColour.getFloatRed(), drySignalColour.getFloatGreen(), drySignalColour.getFloatBlue() };
-        float wetRGB[] { wetSignalColour.getFloatRed(), wetSignalColour.getFloatGreen(), wetSignalColour.getFloatBlue() };
-        float val { static_cast<float>(slider.getValue()) };
-        auto [rWet,gWet,bWet] = wetRGB;
-        auto [rDry,gDry,bDry] = dryRGB;
-        float newColour[] { val * rWet + (1.f - val) * rDry, val * gWet + (1.f - val) * gDry, val * bWet + (1.f - val) * bDry };
-        thumbColour = Colour::fromFloatRGBA(newColour[0], newColour[1], newColour[2], 1.f);
+        float val { static_cast<float>(slider.getValue()) }, pi { MathConstants<float>::pi };
+        Path thumbL, thumbR;
+        
+        thumbL.startNewSubPath(maxPoint);
+        thumbL.addCentredArc(maxPoint.x, maxPoint.y, thumbWidth/2, thumbWidth/2, pi/2.f, pi + (pi - val * pi), pi - (pi - val * pi));
+        thumbL.closeSubPath();
+        g.setColour(drySignalColour);
+        g.fillPath(thumbL);
+        
+        thumbR.startNewSubPath(maxPoint);
+        thumbR.addCentredArc(maxPoint.x, maxPoint.y, thumbWidth/2, thumbWidth/2, pi/2.f, -val * pi, val * pi);
+        thumbR.closeSubPath();
+        g.setColour(wetSignalColour);
+        g.fillPath(thumbR);
     }
-    
-    g.setColour (thumbColour);
-    g.fillEllipse (Rectangle<float> (static_cast<float> (thumbWidth), static_cast<float> (thumbWidth)).withCentre (maxPoint));
+    else {
+        g.setColour (Colours::grey);
+        g.fillEllipse (Rectangle<float> (static_cast<float> (thumbWidth), static_cast<float> (thumbWidth)).withCentre (maxPoint));
+    }
 }
 
-void sadistic::EmpiricalLAF::drawRotarySlider (Graphics& g, int x, int y, int width, int height, float sliderPos,
-                                        float rotaryStartAngle, float rotaryEndAngle, Slider& slider) {
+void sadistic::EmpiricalLAF::drawRotarySlider (Graphics& g, int x, int y, int width, int height, float sliderPos, float rotaryStartAngle, float rotaryEndAngle, Slider& slider) {
     auto angle = rotaryStartAngle + sliderPos * (rotaryEndAngle - rotaryStartAngle);
-    auto& eSlider { static_cast<sadistic::EmpiricalSlider&>(slider) };
+    auto& eSlider { static_cast<EmpiricalSlider&>(slider) };
     bool left { eSlider.isLeft };
     Rectangle<float> r (x, y, width, height);
     Path needles[numNeedles];
@@ -123,7 +108,7 @@ void sadistic::EmpiricalLAF::drawRotarySlider (Graphics& g, int x, int y, int wi
 }
 
 void sadistic::FilterLAF::drawRotarySlider (Graphics& g, int x, int y, int, int, float sliderPos, float rotaryStartAngle, float rotaryEndAngle, Slider& slider) {
-    auto& fKnob { static_cast<sadistic::FilterKnob&>(slider) };
+    auto& fKnob { static_cast<FilterKnob&>(slider) };
     auto& icon { fKnob.icon };
     const auto colour { fKnob.colour };
     auto bounds = slider.getLocalBounds().toFloat();
@@ -142,7 +127,7 @@ bool sadistic::EmpiricalSlider::hitTest (int x, int y)    {
 bool sadistic::TransLabel::hitTest (int x, int y) { return x<1 && y<1; };
 
 void sadistic::showEmpiricalValue(Slider& slider, Label& valueLabel, Component& child) {
-    valueLabel.setText (String(roundToInt(std::pow((slider.getValue() - slider.getMinimum()) / (slider.getMaximum() - slider.getMinimum()),1.01 * slider.getSkewFactor()) * (111.00))), dontSendNotification);
+    valueLabel.setText (String(roundToInt(std::pow((slider.getValue() - slider.getMinimum()) / (slider.getMaximum() - slider.getMinimum()),1.01 * slider.getSkewFactor()) * (slider.getMaximum()))), dontSendNotification);
     child.setVisible(true);};
 
 void sadistic::hideValue(Label& valueLabel, Label& suffixLabel) {

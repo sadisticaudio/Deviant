@@ -3,7 +3,7 @@
 namespace sadistic {
     
     struct Dials : Component {
-        Dials(APVTS& t, int idx) : apvts(t), button(makeLabel(getFxName(currentEffect = idx))), driveSVG(Data::DRIVE_svg, Colours::grey) {
+        Dials(APVTS& t, int idx) : apvts(t), button(makeLabel(getFxName(currentEffect = idx))) {
 
             button.onClick = [&] { switchEffect(++currentEffect%=numFX); button.label.label.setColour(Label::backgroundColourId, button.colour); };
             
@@ -15,18 +15,17 @@ namespace sadistic {
                 knob.setScrollWheelEnabled(true);
                 knob.setRotaryParameters(degreesToRadians(225.f), degreesToRadians(495.f), true);
                 knob.setTextValueSuffix("Hz");
-            }, mainBlendKnob, driveKnob, blendKnob, lowKnob, highKnob);
+            }, blendKnob, driveKnob, deviateKnob, lowKnob, highKnob);
             
             lowKnob.setLookAndFeel(&alaf);
             highKnob.setLookAndFeel(&alaf);
             
-            mainBlendKnob.setLookAndFeel(&alaf);
-            mainBlendKnob.setSliderStyle(Slider::SliderStyle::LinearHorizontal);
-            mainBlendKnob.setTextValueSuffix("%");
+            blendKnob.setLookAndFeel(&alaf);
+            blendKnob.setSliderStyle(juce::Slider::SliderStyle::LinearHorizontal);
+            blendKnob.setTextValueSuffix("%");
             
             driveKnob.setRotaryParameters(degreesToRadians(0.f), 5.81333f, true);
-            blendKnob.setRotaryParameters(degreesToRadians(180.f), degreesToRadians(510.f), true);
-            blendKnob.setTextValueSuffix("%");
+            deviateKnob.setRotaryParameters(degreesToRadians(180.f), degreesToRadians(510.f), true);
 
             forEach ([] (auto& label) { label.setJustificationType(Justification::centred);
                 label.setColour(juce::Label::textColourId, Colours::lightgrey); }, valueLabel, suffixLabel, lLabel, lSuffix, rLabel, rSuffix);
@@ -42,18 +41,20 @@ namespace sadistic {
                 repaint(); };
             driveKnob.onDragEnd = [&,this]() { hideValue(valueLabel, driveSVG);};
             
-            blendKnob.onDragStart = [&,this]() {
+            deviateKnob.onDragStart = [&,this]() {
                 hideValue(valueLabel, suffixLabel);
-                showIntegerValue(blendKnob, valueLabel, suffixLabel);
+                showEmpiricalValue(deviateKnob, valueLabel, deviationSVG);
+                deviationSVG.setRotation(deviateKnob.getNormalisedValue() * MathConstants<float>::twoPi);
                 repaint(); };
-            blendKnob.onValueChange = [&,this]() {
-                showIntegerValue(blendKnob, valueLabel, suffixLabel);
+            deviateKnob.onValueChange = [&,this]() {
+                showEmpiricalValue(deviateKnob, valueLabel, deviationSVG);
+                deviationSVG.setRotation(deviateKnob.getNormalisedValue() * MathConstants<float>::twoPi);
                 repaint(); };
-            blendKnob.onDragEnd = [&,this]() { hideValue(valueLabel, suffixLabel);};
+            deviateKnob.onDragEnd = [&,this]() { hideValue(valueLabel, deviationSVG);};
             
-            mainBlendKnob.onDragStart = [&,this]() { hideValue(valueLabel, suffixLabel); showIntegerValue(mainBlendKnob, valueLabel, suffixLabel);};
-            mainBlendKnob.onValueChange = [&,this]() { showIntegerValue(mainBlendKnob, valueLabel, suffixLabel); };
-            mainBlendKnob.onDragEnd = [&,this]() { hideValue(valueLabel, suffixLabel); };
+            blendKnob.onDragStart = [&,this]() { hideValue(valueLabel, suffixLabel); showIntegerValue(blendKnob, valueLabel, suffixLabel);};
+            blendKnob.onValueChange = [&,this]() { showIntegerValue(blendKnob, valueLabel, suffixLabel); };
+            blendKnob.onDragEnd = [&,this]() { hideValue(valueLabel, suffixLabel); };
             
             lowKnob.onDragStart = [&,this]() { hideValue(valueLabel, suffixLabel); showHzValue(lowKnob, lLabel, lSuffix);};
             lowKnob.onValueChange = [&,this]() {
@@ -69,16 +70,16 @@ namespace sadistic {
                 showHzValue(highKnob, rLabel, rSuffix); };
             highKnob.onDragEnd = [&,this]() { hideValue(rLabel, rSuffix); hideValue(lLabel, lSuffix); };
             
-            addAllAndMakeVisible(*this, blendKnob, driveKnob, mainBlendKnob, driveSVG, suffixLabel, valueLabel, lLabel, rLabel, button);
+            addAllAndMakeVisible(*this, deviateKnob, driveKnob, blendKnob, driveSVG, deviationSVG, suffixLabel, valueLabel, lLabel, rLabel, button);
             
             addChildComponent(lowKnob);
             addChildComponent(highKnob);
             
-            mainBlendAttachment = std::make_unique<APVTS::SliderAttachment>(apvts, "mainBlend", mainBlendKnob);
+            blendAttachment = std::make_unique<APVTS::SliderAttachment>(apvts, "mainBlend", blendKnob);
             
             setMouseOverLabels(lowKnob, "Low", "Cutoff");
             setMouseOverLabels(highKnob, "High", "Cutoff");
-            setMouseOverLabels(mainBlendKnob, "Main", "Blend");
+            setMouseOverLabels(blendKnob, "Main", "Blend");
             
             lowKnob.showMouseOver = [&] { if(mouseOverActive) showMouseOverLabels(lowKnob, valueLabel, suffixLabel); repaint(); };
             lowKnob.hideMouseOver = [&] { if(mouseOverActive) hideMouseOverLabels(lowKnob, valueLabel, suffixLabel); repaint(); };
@@ -86,10 +87,10 @@ namespace sadistic {
             highKnob.hideMouseOver = [&] { if(mouseOverActive) hideMouseOverLabels(highKnob, valueLabel, suffixLabel); repaint(); };
             driveKnob.showMouseOver = [&] { if(mouseOverActive) showMouseOverLabels(driveKnob, valueLabel, suffixLabel); repaint(); };
             driveKnob.hideMouseOver = [&] { if(mouseOverActive) hideMouseOverLabels(driveKnob, valueLabel, suffixLabel); repaint(); };
+            deviateKnob.showMouseOver = [&] { if(mouseOverActive) showMouseOverLabels(deviateKnob, valueLabel, suffixLabel); repaint(); };
+            deviateKnob.hideMouseOver = [&] { if(mouseOverActive) hideMouseOverLabels(deviateKnob, valueLabel, suffixLabel); repaint(); };
             blendKnob.showMouseOver = [&] { if(mouseOverActive) showMouseOverLabels(blendKnob, valueLabel, suffixLabel); repaint(); };
             blendKnob.hideMouseOver = [&] { if(mouseOverActive) hideMouseOverLabels(blendKnob, valueLabel, suffixLabel); repaint(); };
-            mainBlendKnob.showMouseOver = [&] { if(mouseOverActive) showMouseOverLabels(mainBlendKnob, valueLabel, suffixLabel); repaint(); };
-            mainBlendKnob.hideMouseOver = [&] { if(mouseOverActive) hideMouseOverLabels(mainBlendKnob, valueLabel, suffixLabel); repaint(); };
             
             popupMenu.toggleMouseOverEnabled = [&]{ mouseOverActive = mouseOverActive ? false : true; repaint(); };
             popupMenu.toggleFilterControls = [&]{ filterControlsActive = filterControlsActive ? false : true;
@@ -99,44 +100,45 @@ namespace sadistic {
             switchEffect(idx);
         }
         void switchEffect(int idx) {
-            apvts.state.setProperty(IDs::currentScreen, var(int(currentEffect)), nullptr);
+            apvts.state.setProperty(Identifier("currentScreen"), var(int(currentEffect)), nullptr);
             
             button.label.set(makeLabel(getFxName(idx)), Colours::black, Colours::grey.darker());
-            forEach ([] (auto& attachment) { attachment.reset(); }, driveAttachment, blendAttachment, lowAttachment, highAttachment);
+            forEach ([] (auto& attachment) { attachment.reset(); }, driveAttachment, deviationAttachment, lowAttachment, highAttachment);
             driveAttachment = std::make_unique<APVTS::SliderAttachment>(apvts, getFxID(idx) + "Drive", driveKnob);
-            blendAttachment = std::make_unique<APVTS::SliderAttachment>(apvts, getFxID(idx) + "Blend", blendKnob);
+            deviationAttachment = std::make_unique<APVTS::SliderAttachment>(apvts, getFxID(idx) + "Deviation", deviateKnob);
             lowAttachment = std::make_unique<APVTS::SliderAttachment>(apvts, getFxID(idx) + "Low", lowKnob);
             highAttachment = std::make_unique<APVTS::SliderAttachment>(apvts, getFxID(idx) + "High", highKnob);
             
             lowKnob.setNormalisableRange({ 20.0, 20000.0, 0.0, 0.3 });
             highKnob.setNormalisableRange({ 20.0, 20000.0, 0.0, 0.3 });
             driveKnob.setNormalisableRange({ 0.0, 111.0, 1.0 });
-            blendKnob.setNormalisableRange({ 0.0, 1.0, 0.01 });
+            deviateKnob.setNormalisableRange({ 0.0, 100.0, 1.0 });
             
             setMouseOverLabels(driveKnob, getFxID(idx).trimCharactersAtStart("static"), "Drive");
-            setMouseOverLabels(blendKnob, getFxID(idx).trimCharactersAtStart("static"), "Blend");
+            setMouseOverLabels(deviateKnob, getFxID(idx).trimCharactersAtStart("static"), "Deviation");
             
             hideValue(valueLabel, suffixLabel);
             hideValue(lLabel, lSuffix);
             hideValue(rLabel, rSuffix);
             driveSVG.setVisible(false);
+            deviationSVG.setVisible(false);
         }
 
         void resized() override {
             const auto bounds { getBounds() };
             driveKnob.setMouseDragSensitivity(static_cast<int>((double)bounds.getHeight() * 0.98));
-            blendKnob.setMouseDragSensitivity(static_cast<int>((double)bounds.getHeight() * 0.98));
+            deviateKnob.setMouseDragSensitivity(static_cast<int>((double)bounds.getHeight() * 0.98));
             
             auto h { getHeight() }, w { getWidth() }, diameter { jmax(5 * w / 8, 5 * h / 4) };
             
             driveKnob.setSize(diameter, diameter);
-            blendKnob.setSize(diameter, diameter);
+            deviateKnob.setSize(diameter, diameter);
             driveKnob.setTopRightPosition(getWidth()/2 - 50, h/2 - diameter/2);
-            blendKnob.setTopLeftPosition(w/2 + 50, h/2 - diameter/2);
+            deviateKnob.setTopLeftPosition(w/2 + 50, h/2 - diameter/2);
             Rectangle<int> r { bounds.getX(), bounds.getY(), (driveKnob.getRight() - 40) - bounds.getX(), h };
             r.reduce(0, jmax(r.getHeight()/6, r.getWidth()/6));
             
-            auto leftArea { r }, rightArea { r.withX(blendKnob.getX() + 40) };
+            auto leftArea { r }, rightArea { r.withX(deviateKnob.getX() + 40) };
             
             valueLabel.setBounds(leftArea);
             suffixLabel.setBounds(rightArea);
@@ -148,14 +150,15 @@ namespace sadistic {
             rSuffix.setSize(rLabel.getWidth()/3, rLabel.getHeight()/3);
             rSuffix.setTopLeftPosition(rLabel.getRight(), (rLabel.getHeight()/4) * 3);
             
-            driveSVG.setBounds(blendKnob.getBounds().reduced(driveKnob.getWidth()/6));
-            auto blendBounds { Rectangle<int>(static_cast<int>((float)(blendKnob.getX() - driveKnob.getRight() + getWidth()/8) * (float)getHeight()/(float)driveKnob.getHeight()), 20) };
-            mainBlendKnob.setSize(blendBounds.getWidth(), blendBounds.getHeight());
-            mainBlendKnob.setCentrePosition(bounds.getCentre().x, blendBounds.getHeight()/2);
+            driveSVG.setBounds(deviateKnob.getBounds().reduced(driveKnob.getWidth()/6));
+            deviationSVG.setBounds(deviateKnob.getBounds().reduced(driveKnob.getWidth()/6));
+            auto blendBounds { Rectangle<int>(static_cast<int>((float)(deviateKnob.getX() - driveKnob.getRight() + getWidth()/8) * (float)getHeight()/(float)driveKnob.getHeight()), 20) };
+            blendKnob.setSize(blendBounds.getWidth(), blendBounds.getHeight());
+            blendKnob.setCentrePosition(bounds.getCentre().x, blendBounds.getHeight()/2);
             
             forEach ([] (Label& label) { label.setFont(getSadisticFont().withHeight(jmin(label.getHeight() * 2 / 3, label.getWidth() * 2 / 3))); label.setColour(Label::ColourIds::textColourId, Colours::grey); }, valueLabel, suffixLabel, lLabel, lSuffix, rLabel, rSuffix);
 
-            blendKnob.setMouseDragSensitivity(bounds.getHeight() / 2);
+            deviateKnob.setMouseDragSensitivity(bounds.getHeight() / 2);
             driveKnob.setMouseDragSensitivity(bounds.getHeight() / 2);
             
             auto toggleWidth { 150 }, toggleHeight { 15 };
@@ -188,15 +191,14 @@ namespace sadistic {
         FilterLAF alaf;
         APVTS& apvts;
         SadTextButton button;
-        SadSVG driveSVG;
-        sadistic::TransLabel valueLabel, suffixLabel, lLabel, rLabel, lSuffix, rSuffix;
+        SadSVG driveSVG { Data::DRIVE_svg, Colours::grey }, deviationSVG { Data::DEVIATION_svg, Colours::grey };
+        TransLabel valueLabel, suffixLabel, lLabel, rLabel, lSuffix, rSuffix;
         int currentEffect;
-        EmpiricalSlider driveKnob { true }, blendKnob;
-        FilterKnob lowKnob { Data::apiKnob_svg }, highKnob { Data::apiKnob_svg };
-        DeviantSlider mainBlendKnob;
+        EmpiricalSlider driveKnob { true }, deviateKnob;
+        FilterKnob lowKnob { Data::apiKnob2_svg }, highKnob { Data::apiKnob2_svg };
+        DeviantSlider blendKnob;
         bool mouseOverActive { false }, filterControlsActive { false };
         RightClickMenu popupMenu;
-        std::unique_ptr<APVTS::SliderAttachment> driveAttachment, lowAttachment, highAttachment, blendAttachment, mainBlendAttachment;
+        std::unique_ptr<APVTS::SliderAttachment> driveAttachment, lowAttachment, highAttachment, deviationAttachment, blendAttachment;
     };
-    
-}
+} // namespace sadistic

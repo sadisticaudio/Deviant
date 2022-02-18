@@ -18,9 +18,9 @@ namespace sadistic {
         ScopeBuffer scopeBuffer[numSignals];
         ScopeRenderer renderer { deviant.getAPVTS(), scopeBuffer };
         DualScope scope { deviant.getOscilloscopeFifo(), scopeBuffer };
-        Dials theDials { deviant.getAPVTS(), deviant.getAPVTS().state.getProperty(IDs::currentScreen) };
+        Dials theDials { deviant.getAPVTS(), deviant.getAPVTS().state.getProperty(Identifier("currentScreen")) };
         SadButton toggleButtonLeft { true }, toggleButtonRight { false };
         std::unique_ptr<SadisticUnlockForm> authorizer;
         JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DeviantEditor)
     };
-}
+} // namespace sadistic

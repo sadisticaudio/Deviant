@@ -1,30 +1,34 @@
 #pragma once
-#include "sadistic.h"
+#include "../../Source/sadistic.h"
 
 namespace sadistic {
     
+    struct Product {
+        int idx; const char* id; const char* name;
+    };
+    static constexpr Product products[] {
+        { 0, "faKe", "Fake" },
+        { 1, "hieF", "Thief" },
+        { 2, "iAnt", "Deviant" },
+        { 3, "verT", "Pervert" }
+    };
+    
     struct SadisticMarketplaceStatus : public juce::OnlineUnlockStatus {
 
-        static constexpr std::string_view productID[] {
-            { "faKe" },
-            { "hieF" },
-            { "ianT" },
-            { "verT" }
-        };
-        
-        static constexpr std::string_view productName[] {
-            { "Fake" },
-            { "Thief" },
-            { "Deviant" },
-            { "Pervert" }
-        };
-
-        static inline String getProductID(int idx) { return String(productID[idx].data(), productID[idx].size()); }
-        static inline String getProductName(int idx) { return String(productName[idx].data(), productName[idx].size()); }
+        static inline String getProductID(int idx) { return String(products[idx].id); }
+        static inline String getProductName(int idx) { return String(products[idx].name); }
         static inline int getProductIndexFromName(String name, int i = 0) {
-            for(; i < (int)sizeof(productName); ++i) if(productName[i].compare(name.toUTF8())) return i; return 666; }
-        static inline int getProductIndexFromID(String pID, int i = 0) {
-            for(; i < (int)sizeof(productID); ++i) if(productID[i].compare(pID.toUTF8())) return i; return {}; }
+            for(; i < (int)(sizeof(products)/sizeof(Product)); ++i)
+                if(name == String(products[i].name))
+                    return i;
+            return 0;
+        }
+        static inline int getProductIndexFromID(String pID) {
+            for(int i { 0 }; i < (int)(sizeof(products)/sizeof(Product)); ++i)
+                if(pID == String(products[i].id))
+                    return i;
+            return 0;
+        }
         static inline String getProductID(String name) { return getProductID(getProductIndexFromName(name)); }
         static inline String getProductName(String pID) { return getProductName(getProductIndexFromID(pID)); }
         
@@ -66,8 +70,8 @@ namespace sadistic {
                     return String(element->getStringAttribute(translate("marketplacestatus")));
             } return {};
         }
-        juce::String getWebsiteName() override { return "sadisticaudio.com"; }
-        juce::URL getServerAuthenticationURL() override { return juce::URL ("https://shop.sadisticaudio.com/auth.php"); }
+        juce::String getWebsiteName() override { return "auth.sadisticaudio.com"; }
+        juce::URL getServerAuthenticationURL() override { return juce::URL ("https://auth.sadisticaudio.com/auth.php"); }
         
         OnlineUnlockStatus::UnlockResult handleOfflineXml (XmlElement xml) {
             UnlockResult r;
@@ -160,4 +164,4 @@ namespace sadistic {
         
         JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SadisticUnlockForm)
     };
-};
+} // namespace sadistic

@@ -3,12 +3,14 @@
 
 namespace sadistic {
     
-    struct DualScope {
+    class DualScope {
+    public:
         static constexpr int fifoSize { FIFOSIZE }, scopeSize { SCOPESIZE };
         DualScope(LongFifo<float>* sf, ScopeBuffer(& wf)[2]) : oscilloscope{ { *this, wf[0], sf[0] }, { *this, wf[1], sf[1] } } {}
-        const double getSampleRate() { return lastSampleRate; }
+        double getSampleRate() const { return lastSampleRate; }
         
-        struct Oscilloscope : private Timer {
+        class Oscilloscope : private Timer {
+        public:
             
             Oscilloscope(DualScope& dS, ScopeBuffer& sB, LongFifo<float>& lF) : dual(dS), rendererBuffer(sB), scopeFifo(lF) {
                 startTimerHz (30);
@@ -26,34 +28,27 @@ namespace sadistic {
                 auto aBuf { scopeFifo.getBlock() };
                 auto currentWave { rendererBuffer.getBlankFrame() };
                 if (currentWave) {
-                    if(!std::all_of(aBuf, aBuf + fifoSize, [](float sample){ return sample == 0.f; })) {
-                        float waveLengthInSamples { ((float)sampleRate / 666.f) };
-                        float numberOfCycles { 8.f };
-                        const int waveDisplayLength { jlimit(10, 6000, static_cast<int>(waveLengthInSamples * numberOfCycles)) };
-                        float speedRatio { (float)waveDisplayLength / 258.f };
-                        
-    //                    const auto minMax { std::minmax_element(aBuf, aBuf + fifoSize) };
-                        const int indexOfMax { static_cast<int>(std::distance(aBuf,std::max_element(aBuf, aBuf + fifoSize))) };
-                        const int indexOfMin { static_cast<int>(std::distance(aBuf,std::min_element(aBuf, aBuf + fifoSize))) };
+                    float waveLengthInSamples { ((float)sampleRate / 666.f) };
+                    float numberOfCycles { 8.f };
+                    const int waveDisplayLength { jlimit(10, 6000, static_cast<int>(waveLengthInSamples * numberOfCycles)) };
+                    float speedRatio { (float)waveDisplayLength / 258.f };
+                    const int indexOfMax { static_cast<int>(std::distance(aBuf,std::max_element(aBuf, aBuf + fifoSize))) };
+                    const int indexOfMin { static_cast<int>(std::distance(aBuf,std::min_element(aBuf, aBuf + fifoSize))) };
+                    if(abs(aBuf[indexOfMax]) > abs(aBuf[indexOfMin])) extremity = indexOfMax;
+                    else extremity = indexOfMin;
+                    const float mag { abs(aBuf[extremity]) }, magDB { Decibels::gainToDecibels(mag) }, mult { 1.f - -magDB/100.f };
+                    
+                    const int startIndex { fifoSize - ((waveDisplayLength * 3) / 2 + 1) };
+                    interpolator.process(jlimit(20.f / 256.f, (float)(fifoSize - ((size_t)waveDisplayLength + 1) / 256.f), speedRatio), aBuf + startIndex, scopeData, scopeSize+2);
 
-                        if(abs(aBuf[indexOfMax]) > abs(aBuf[indexOfMin])) extremity = indexOfMax;
-                        else extremity = indexOfMin;
-                        const auto mag { abs(aBuf[extremity]) }, magDB { Decibels::gainToDecibels(mag) }, mult { 1.f - -magDB/100.f };
-                        
-                        const int startIndex = fifoSize - ((waveDisplayLength * 3) / 2 + 1);
-                        interpolator.process(jlimit(20.f / 256.f, (float)(fifoSize - ((size_t)waveDisplayLength + 1) / 256.f), speedRatio), aBuf + startIndex, scopeData, scopeSize+2);
-
-                        for (int i = 0; i < scopeSize; ++i) currentWave[i] = scopeData[i+2] * 2.f * mult;
-                        rendererBuffer.setReadyToRender(currentWave);
-                    }
-                    else {
-                        std::cout << "wtf";
-                    }
+                    for (int i { 0 }; i < scopeSize; ++i) currentWave[i] = scopeData[i+2] * 2.f * mult;
+                    rendererBuffer.setReadyToRender(currentWave);
                 }
                 scopeFifo.finishedReading();
             }
             
-            float scopeData[scopeSize+2]{}, scopeData2[scopeSize]{};
+        private:
+            float scopeData[scopeSize+2]{};
             DualScope& dual;
             ScopeBuffer& rendererBuffer;
             LongFifo<float>& scopeFifo;
@@ -65,7 +60,9 @@ namespace sadistic {
         
         void prepare(const ProcessSpec& spec) { oscilloscope[wetSignal].prepare(spec); oscilloscope[drySignal].prepare(spec); if (spec.sampleRate != 0.0) lastSampleRate = spec.sampleRate; }
         void reset() { resetAll(oscilloscope[wetSignal], oscilloscope[drySignal]); }
+        
+    private:
         Oscilloscope oscilloscope[numSignals];
-        double lastSampleRate{ 44100.0 };
+        double lastSampleRate { 44100.0 };
     };    
-}
+} // namespace sadistic
