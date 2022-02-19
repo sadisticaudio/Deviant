@@ -41,6 +41,11 @@
  
   Created by Frye Wilkins on 3/14/20.
   Copyright © 2020 Sadistic. All rights reserved.
+  By using JUCE, you agree to the terms of both the Deviant End-User License
+  Agreement and Sadistic Audio Privacy Policy (both effective as of the 19th February 2022).
+ 
+  Deviant End User License Agreement: https://github.com/sadisticaudio/Deviant/blob/master/LICENSE.md
+  Privacy Policy can be found here: https://shop.sadisticaudio.com/index.php?route=information/information&information_id=5
 
 */
 
