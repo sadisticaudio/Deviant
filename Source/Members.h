@@ -14,7 +14,7 @@ namespace sadistic {
         atan(createEffect<Shaper<Atan, FloatType>>(layout, 0, cIdx[0], coefficients[0])),
         crusher(createEffect<Shaper<Crusher, FloatType>>(layout, 1, cIdx[1], coefficients[1])),
         clipper(createEffect<Shaper<Clipper, FloatType>>(layout, 2, cIdx[2], coefficients[2])),
-        deviation(createEffect<Shaper<Deviation, FloatType>>(layout, 3, cIdx[3], coefficients[3])),
+        deviation(createEffect<Shaper<Logistic, FloatType>>(layout, 3, cIdx[3], coefficients[3])),
         hyperbolic(createEffect<Shaper<Hyperbolic, FloatType>>(layout, 4, cIdx[4], coefficients[4])),
         params(emplaceMainParams(layout)) {}
         
@@ -152,7 +152,7 @@ namespace sadistic {
         Shaper<Atan, FloatType> atan;
         Shaper<Crusher, FloatType> crusher;
         Shaper<Clipper, FloatType> clipper;
-        Shaper<Deviation, FloatType> deviation;
+        Shaper<Logistic, FloatType> deviation;
         Shaper<Hyperbolic, FloatType> hyperbolic;
         
         // Array of base class pointers to the above effects, similar to JUCE's ProcessorBase class,

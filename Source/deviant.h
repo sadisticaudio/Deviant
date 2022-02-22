@@ -11,13 +11,13 @@ namespace sadistic {
     enum { maxParams = 5, numFX = 5, maxCoeffs = 8 };
     enum { GAINLENGTH = 256 };
     
-    struct EffectInfo { bool defaultEnabled; int defaultRoute; int defaultIndex; float defaultBlend; const char* name; const char* id; };
+    struct EffectInfo { bool defaultEnabled; int defaultRoute; int defaultIndex; float defaultBlend; const char* name; const char* id; int numParams; };
 
     constexpr EffectInfo effectInfo[] {
         { true, 2, 0, 1.f, "Static Atan", "staticAtan" },
         { true, 2, 1, 1.f, "Static Bit Crusher", "staticBitCrusher" },
         { true, 2, 2, 1.f, "Static Clipper", "staticClipper" },
-        { true, 2, 3, 1.f, "Static Deviation", "staticDeviation" },
+        { true, 2, 3, 1.f, "Static Logistic", "staticLogistic" },
         { true, 2, 4, 1.f, "Static Hyperbolic", "staticHyperbolic" },
         { true, 4, 0, 1.f, "Main", "main" }
     };

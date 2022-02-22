@@ -45,7 +45,7 @@ namespace sadistic {
         }
     };
     
-    struct Deviation {
+    struct Logistic {
         static void calculateCoefficients(float(& coeffs)[maxCoeffs]) {
             auto& [drive, lo, hi, deviation, mDrive, mag, attenuation, blend] = coeffs;
             mDrive = sadSymmetricSkew(drive/111.f, -0.96f);

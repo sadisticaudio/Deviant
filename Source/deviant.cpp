@@ -88,18 +88,18 @@ void sadistic::EmpiricalLAF::drawRotarySlider (Graphics& g, int x, int y, int wi
                 tensBox = nearBox;
             }
             if(i > 0) {
-                auto newTensBox = tensBox.reduced(tensBox.getWidth()/4.f, -tensBox.getHeight()/4.f);
+                auto newTensBox = tensBox.reduced(tensBox.getWidth()/16.f, -tensBox.getHeight()/3.f);
                 auto b = tensPlaceNums[i]->getBounds().toFloat();
                 auto placementTransform { AffineTransform::fromTargetPoints(b.getTopLeft(), newTensBox.getTopLeft(), b.getTopRight(), newTensBox.getTopRight(), b.getBottomLeft(), newTensBox.getBottomLeft()) };
                 tensPlaceNums[i]->draw(g, 1.f, placementTransform.followedBy(rot));
             }
             if(i > 9) {
-                auto newHundredsBox = hundredsBox.reduced(hundredsBox.getWidth()/4.f, -hundredsBox.getHeight()/4.f);
+                auto newHundredsBox = hundredsBox.reduced(hundredsBox.getWidth()/16.f, -hundredsBox.getHeight()/3.f);
                 auto b = hundredsPlaceNums[i - 10]->getDrawableBounds().toFloat();
                 auto placementTransform { AffineTransform::fromTargetPoints(b.getTopLeft(), newHundredsBox.getTopLeft(), b.getTopRight(), newHundredsBox.getTopRight(), b.getBottomLeft(), newHundredsBox.getBottomLeft()) };
                 hundredsPlaceNums[i - 10]->draw(g, 1.f, placementTransform.followedBy(rot));
             }
-            auto newOnesBox = onesBox.reduced(onesBox.getWidth()/4.f, -onesBox.getHeight()/4.f);
+            auto newOnesBox = onesBox.reduced(onesBox.getWidth()/16.f, -onesBox.getHeight()/3.f);
             auto b = onesPlaceNums[i]->getBounds().toFloat();
             auto placementTransform { AffineTransform::fromTargetPoints(b.getTopLeft(), newOnesBox.getTopLeft(), b.getTopRight(), newOnesBox.getTopRight(), b.getBottomLeft(), newOnesBox.getBottomLeft()) };
             onesPlaceNums[i]->draw(g, 1.f, placementTransform.followedBy(rot));
