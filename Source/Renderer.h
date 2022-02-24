@@ -18,7 +18,6 @@ namespace sadistic {
             openGLContext.attachTo(*this);
             openGLContext.setContinuousRepainting(true);
         }
-        void start() {  }
         void resized() override { getMatrix(); }
         ~ScopeRenderer() override { openGLContext.detach(); }
         void openGLContextClosing() override { moonShader->release(); waveShader->release(); moonTexture.release(); }
