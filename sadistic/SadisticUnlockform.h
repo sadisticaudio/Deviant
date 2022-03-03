@@ -1,5 +1,5 @@
 #pragma once
-#include "../../Source/sadistic.h"
+#include "sadistic.h"
 
 namespace sadistic {
     
