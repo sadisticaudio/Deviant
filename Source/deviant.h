@@ -22,7 +22,7 @@ namespace sadistic {
         { true, 4, 0, 1.f, "Main", "main" }
     };
     
-    constexpr ParamInfo paramInfo[][maxParams] {
+    inline ParamInfo paramInfo[numFX + 1][maxParams] {
         { { ParamInfo::NA, 0.f, 111.f, 0.f, "Drive", "Drive" },
             { ParamInfo::Hz, 20.f, 20000.f, 20.f, "Low Cutoff", "Low" },
             { ParamInfo::Hz, 20.f, 20000.f, 20000.f, "High Cutoff", "High" },
@@ -46,8 +46,7 @@ namespace sadistic {
         { { ParamInfo::Pct, 0.f, 1.f, 1.f, "Blend", "Blend" } }
     };
     
-    constexpr int getNumParamsForEffect(int effectIndex) { return sizeof(paramInfo[effectIndex]) / sizeof(ParamInfo); }
-    
+    inline int getNumParamsForEffect(int effectIndex) { return sizeof(paramInfo[effectIndex]) / sizeof(ParamInfo); }
     inline String getFxID(int effectIndex) { return { effectInfo[effectIndex].id }; }
     inline String getFxName(int effectIndex) { return { effectInfo[effectIndex].name }; }
     inline String getParamID(int eIndex, int pIndex) { return { getFxID(eIndex) + String(paramInfo[eIndex][pIndex].id) }; }
