@@ -7,7 +7,7 @@ struct Spinner  : public juce::Component, private juce::Timer {
         getLookAndFeel().drawSpinningWaitAnimation (g, Colours::darkgrey, 0, 0, getWidth(), getHeight());
     }
 };
-    
+
 struct sadistic::SadisticUnlockForm::OverlayComp  : public juce::Component, private juce::Thread, private Timer {
     OverlayComp (SadisticUnlockForm& f) : Thread (String()), form (f) {
         result.succeeded = false;
@@ -61,12 +61,12 @@ struct sadistic::SadisticUnlockForm::OverlayComp  : public juce::Component, priv
             }
         }
     }
-
+    
     SadisticUnlockForm& form;
     Spinner spinner;
     OnlineUnlockStatus::UnlockResult result;
     String email, password;
-
+    
     JUCE_LEAK_DETECTOR (SadisticUnlockForm::OverlayComp)
 };
 
@@ -100,7 +100,7 @@ sadistic::SadisticUnlockForm::SadisticUnlockForm (SadisticMarketplaceStatus& s) 
                 }
             }
         };
-
+        
         saveFile = [&,this](){
             fc = std::make_unique<FileChooser>("Save License Request File", File("~/Desktop/licenseKeyRequest.xml"));
             
@@ -180,7 +180,7 @@ sadistic::SadisticUnlockForm::SadisticUnlockForm (SadisticMarketplaceStatus& s) 
         
         saveFile = [&,this](){
             fc = std::make_unique<FileChooser>("Save License Key File",  File("~/Desktop/licenseKey.xml"));
-
+            
             fc->launchAsync (FileBrowserComponent::saveMode |
                              FileBrowserComponent::canSelectFiles |
                              FileBrowserComponent::warnAboutOverwriting |
@@ -190,15 +190,15 @@ sadistic::SadisticUnlockForm::SadisticUnlockForm (SadisticMarketplaceStatus& s) 
         
         for (int i = 1; i <= (int)(sizeof(products)/sizeof(Product)); i++) productList.addItem(String(products[i].name), i);
     }
-
+    
     loadButton.onClick = [&,this](){ loadFile(); };
     saveButton.onClick = [&,this](){ saveFile(); };
     registerButton.onClick = [&,this](){ attemptRegistration(); };
-
+    
     message.setJustificationType (Justification::centred);
     statusLabel.setJustificationType (Justification::horizontallyJustified);
     statusLabel.setText("Status: ", sendNotificationSync);
-
+    
     logo = Drawable::createFromImageData (Data::saLogo_svg, Data::saLogo_svgSize);
     
     addChildComponent (logo.get());
@@ -207,11 +207,11 @@ sadistic::SadisticUnlockForm::SadisticUnlockForm (SadisticMarketplaceStatus& s) 
     addAndMakeVisible (emailBox);
     addAndMakeVisible (passwordBox);
     addAndMakeVisible (productList);
-
+    
     addAndMakeVisible (registerButton);
     addAndMakeVisible (loadButton);
     addAndMakeVisible (saveButton);
-
+    
     Colour labelCol (findColour (TextEditor::backgroundColourId).contrasting (0.5f));
     emailBox.setTextToShowWhenEmpty ("Email Address", labelCol);
     passwordBox.setTextToShowWhenEmpty ("Password", labelCol);
@@ -226,7 +226,7 @@ void sadistic::SadisticUnlockForm::paint (Graphics& g) {
 }
 
 void sadistic::SadisticUnlockForm::resized() {
-//        jassert (JUCEApplicationBase::isStandaloneApp() || findParentComponentOfClass<DialogWindow>() == nullptr);
+    //        jassert (JUCEApplicationBase::isStandaloneApp() || findParentComponentOfClass<DialogWindow>() == nullptr);
     logo->centreWithSize((int)((float) getHeight() * 0.93f), (int)((float) getHeight() / 0.93f));
     const int buttonHeight = 22;
     auto r = getLocalBounds().reduced (10, 20);

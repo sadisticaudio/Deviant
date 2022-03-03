@@ -76,7 +76,7 @@ namespace sadistic {
         UndoManager undoManager;
         APVTS apvts;
     public:
-        SadisticMarketplaceStatus marketplaceStatus { getPluginCodeString(JucePlugin_PluginCode) };
+        SadisticMarketplaceStatus marketplaceStatus { "iAnt" };
     private:
         LongFifo<float> oscilloscopeFifo[2]{};
         

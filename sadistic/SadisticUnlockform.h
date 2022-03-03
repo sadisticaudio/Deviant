@@ -14,7 +14,7 @@ namespace sadistic {
     };
     
     struct SadisticMarketplaceStatus : public juce::OnlineUnlockStatus {
-
+        
         static inline String getProductID(int idx) { return String(products[idx].id); }
         static inline String getProductName(int idx) { return String(products[idx].name); }
         static inline int getProductIndexFromName(String name, int i = 0) {
@@ -36,7 +36,7 @@ namespace sadistic {
         void paint(Graphics& g) { g.fillAll(Colours::black.withAlpha(0.5f)); }
         juce::String getProductID() override { return product.isNotEmpty() ? product : String(); }
         bool doesProductIDMatch (const juce::String& returnedIDFromServer) override { return getProductID() == returnedIDFromServer; }
-        juce::RSAKey getPublicKey() override { return juce::RSAKey ("5,ac317e992ce3c4833168fb8037f9937fbed34d77d3982942ed60682db20724b9"); }
+        juce::RSAKey getPublicKey() override { return juce::RSAKey ("11,709a8002433f70204e9eec38847c71beef63eab2d1feb65771cd2f91ee762a31"); }
         
         String getPersistenceFilePath() {
             File homePath { File::getSpecialLocation(File::userHomeDirectory) };
@@ -89,7 +89,7 @@ namespace sadistic {
         }
         
         juce::String readReplyFromWebserver (const juce::String& email, const juce::String& password) override {
-
+            
             auto p { product.isNotEmpty() ? product : getProductID() };
             auto o { os.isNotEmpty() ? os : juce::SystemStats::getOperatingSystemName() };
             auto m { mach.isNotEmpty() ? mach : getLocalMachineIDs()[0] };
@@ -112,7 +112,7 @@ namespace sadistic {
                 auto contentLength = stream->getTotalLength();
                 auto downloaded    = 0;
                 const size_t bufferSize = 0x8000;
-                juce::HeapBlock<char> buffer (bufferSize);
+                juce::HeapBlock<char> buffer (bufferSize, true);
                 while (! (stream->isExhausted() || stream->isError() || thread->threadShouldExit())) {
                     auto max = juce::jmin ((int) bufferSize, contentLength < 0 ? std::numeric_limits<int>::max()
                                            : static_cast<int> (contentLength - downloaded));
@@ -122,21 +122,21 @@ namespace sadistic {
                     if (downloaded == contentLength) break;
                 }
                 if (thread->threadShouldExit() || stream->isError() || (contentLength > 0 && downloaded < contentLength)) return {};
-
+                
                 String temp { juce::CharPointer_UTF8 (buffer.get()) };
                 if(isPlugin == false) storedKey = parseXML(temp);
                 return temp;
             }
             return {};
         }
-
+        
         const bool isPlugin;
         std::unique_ptr<XmlElement> storedKey;
         String product, name, mach, os;
         juce::CriticalSection streamCreationLock;
         std::unique_ptr<juce::WebInputStream> stream;
     };
-
+    
     struct SadisticUnlockForm  : public juce::Component {
         SadisticUnlockForm (SadisticMarketplaceStatus&);
         ~SadisticUnlockForm() override;
@@ -152,7 +152,7 @@ namespace sadistic {
         TextButton registerButton { "Register" }, loadButton { "Load" }, saveButton { "Save" };
         struct OverlayComp;
         friend struct OverlayComp;
-
+        
         std::unique_ptr<Drawable> logo;
         std::unique_ptr<FileChooser> fc;
         std::function<void()> loadFile, saveFile;
