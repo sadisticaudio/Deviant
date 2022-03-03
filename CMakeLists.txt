@@ -108,14 +108,14 @@ foreach(target Deviant_AU Deviant_VST Deviant_VST3)
     endif()
 endforeach()
 
-set_target_properties(Deviant_AU PROPERTIES 
+if (APPLE)
+    set_target_properties(Deviant_AU PROPERTIES 
             XCODE_SCHEME_EXECUTABLE "${AU_XCODE_DEBUG_APP}")
-
-set_target_properties(Deviant_VST PROPERTIES 
+    set_target_properties(Deviant_VST PROPERTIES 
             XCODE_SCHEME_EXECUTABLE "${VST_XCODE_DEBUG_APP}")
-
-set_target_properties(Deviant_VST3 PROPERTIES 
+    set_target_properties(Deviant_VST3 PROPERTIES 
             XCODE_SCHEME_EXECUTABLE "${VST3_XCODE_DEBUG_APP}")
+endif()
 
 juce_add_binary_data(BinaryData HEADER_NAME SadisticData.h NAMESPACE Data SOURCES ${resources})
 
