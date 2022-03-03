@@ -156,7 +156,7 @@ namespace sadistic {
             blendKnob.setSize(blendBounds.getWidth(), blendBounds.getHeight());
             blendKnob.setCentrePosition(bounds.getCentre().x, blendBounds.getHeight()/2);
             
-            forEach ([] (Label& label) { label.setFont(getSadisticFont().withHeight(jmin(label.getHeight() * 2 / 3, label.getWidth() * 2 / 3))); label.setColour(Label::ColourIds::textColourId, Colours::grey); }, valueLabel, suffixLabel, lLabel, lSuffix, rLabel, rSuffix);
+            forEach ([] (Label& label) { label.setFont(getSadisticFont().withHeight(static_cast<float>(jmin(label.getHeight() * 2 / 3, label.getWidth() * 2 / 3)))); label.setColour(Label::ColourIds::textColourId, Colours::grey); }, valueLabel, suffixLabel, lLabel, lSuffix, rLabel, rSuffix);
 
             deviateKnob.setMouseDragSensitivity(bounds.getHeight() / 2);
             driveKnob.setMouseDragSensitivity(bounds.getHeight() / 2);

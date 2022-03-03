@@ -58,8 +58,8 @@ namespace sadistic {
             if(isPlugin) {
                 auto rootElement = parseXML(getPersistenceFile());
                 if(!rootElement) rootElement = std::make_unique<XmlElement>(translate("root"));
-                XmlElement* element;
-                if(!(element = rootElement->getChildByName(product))) element = rootElement->createNewChildElement(product);
+                XmlElement* element { rootElement->getChildByName(product) };
+                if(!element) element = rootElement->createNewChildElement(product);
                 element->setAttribute(translate("marketplacestatus"), s);
                 rootElement->writeTo(getPersistenceFile(), XmlElement::TextFormat());
             }

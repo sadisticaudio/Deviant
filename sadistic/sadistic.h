@@ -335,7 +335,8 @@ namespace sadistic {
     public:
         class FrameWithState {
         public:
-            void reset() { memset(frame, 0.f, sizeof(frame)); isReady = false; wasFirstIn = false; }
+//            void reset() { memset(frame, 0.f, sizeof(frame)); isReady = false; wasFirstIn = false; }
+            void reset() { std::fill(frame, frame + sizeof(frame), 0.f); isReady = false; wasFirstIn = false; }
             const float* getReadPointer() { return frame; }
             float* getWritePointer() { reset(); return frame; }
             bool isSameAddress(const float* frameToCheck) { if(frameToCheck == frame) return true; else return false; }
@@ -533,7 +534,7 @@ namespace sadistic {
             icon->replaceColour(Colours::black, c);
         }
         void paint(Graphics&) override {
-            auto transform = juce::AffineTransform:: rotation (angle, getLocalBounds().getCentreX(), getLocalBounds().getCentreY());
+            auto transform = juce::AffineTransform:: rotation (angle, getLocalBounds().toFloat().getCentreX(), getLocalBounds().toFloat().getCentreY());
             icon->setTransformToFit (getLocalBounds().toFloat().reduced(0.9f), RectanglePlacement::centred);
             icon->setTransform(icon->getTransform().followedBy(transform));// rotated(angle, getLocalBounds().getCentreX(),
         }

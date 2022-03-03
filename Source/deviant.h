@@ -225,7 +225,7 @@ namespace sadistic {
     struct EmpiricalLAF : public LookAndFeel_V4 {
         EmpiricalLAF() {
             const char* nums[numNumbers] { Data::zero_svg, Data::one_svg, Data::two_svg, Data::three_svg, Data::four_svg, Data::five_svg, Data::six_svg, Data::seven_svg, Data::eight_svg, Data::nine_svg, Data::zero_svg, Data::one_svg };
-            for (auto& one : onesPlaceNums) { one = makeIcon(Data::zero_svg); one->replaceColour(Colours::black, Colours::white); }
+            for (auto& oneDigit : onesPlaceNums) { oneDigit = makeIcon(Data::zero_svg); oneDigit->replaceColour(Colours::black, Colours::white); }
             for (int i { 0 }; i < numNumbers; ++i) { tensPlaceNums[i] = makeIcon(nums[i]); tensPlaceNums[i]->replaceColour(Colours::black, Colours::white); }
             hundredsPlaceNums[0] = makeIcon(Data::one_svg); hundredsPlaceNums[0]->replaceColour(Colours::black, Colours::white);
             hundredsPlaceNums[1] = makeIcon(Data::one_svg); hundredsPlaceNums[1]->replaceColour(Colours::black, Colours::white);
@@ -314,7 +314,7 @@ namespace sadistic {
                 label.setBounds(bounds);
             else {
                 label.setBounds(Rectangle<int>(bounds.getHeight(), bounds.getWidth()).withCentre(bounds.getCentre()));
-                label.setTransform(AffineTransform::rotation(MathConstants<float>::pi * angle, label.getBounds().getCentreX(), label.getBounds().getCentreY()));
+                label.setTransform(AffineTransform::rotation(MathConstants<float>::pi * angle, label.getBounds().toFloat().getCentreX(), label.getBounds().toFloat().getCentreY()));
             }
         }
         Label label;

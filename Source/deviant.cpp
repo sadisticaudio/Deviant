@@ -3,20 +3,20 @@
 void sadistic::FilterLAF::drawLinearSlider (Graphics& g, int x, int y, int width, int height, float sliderPos, float a, float b, const Slider::SliderStyle style, Slider& slider)  {
     LookAndFeel_V4::drawLinearSlider(g, x, y, width, height, sliderPos, a, b, style, slider);
     Point<float> maxPoint { sliderPos, y + height * 0.5f };
-    auto thumbWidth = getSliderThumbRadius (slider);
+    auto thumbWidth = static_cast<float>(getSliderThumbRadius (slider));
 
     if (slider.isMouseOver()) {
-        float val { static_cast<float>(slider.getValue()) }, pi { MathConstants<float>::pi };
+        float val { static_cast<float>(slider.getValue()) };
         Path thumbL, thumbR;
         
         thumbL.startNewSubPath(maxPoint);
-        thumbL.addCentredArc(maxPoint.x, maxPoint.y, thumbWidth/2, thumbWidth/2, pi/2.f, pi + (pi - val * pi), pi - (pi - val * pi));
+        thumbL.addCentredArc(maxPoint.x, maxPoint.y, thumbWidth/2.f, thumbWidth/2.f, pi<float>/2.f, pi<float> + (pi<float> - val * pi<float>), pi<float> - (pi<float> - val * pi<float>));
         thumbL.closeSubPath();
         g.setColour(drySignalColour);
         g.fillPath(thumbL);
         
         thumbR.startNewSubPath(maxPoint);
-        thumbR.addCentredArc(maxPoint.x, maxPoint.y, thumbWidth/2, thumbWidth/2, pi/2.f, -val * pi, val * pi);
+        thumbR.addCentredArc(maxPoint.x, maxPoint.y, thumbWidth/2.f, thumbWidth/2.f, pi<float>/2.f, -val * pi<float>, val * pi<float>);
         thumbR.closeSubPath();
         g.setColour(wetSignalColour);
         g.fillPath(thumbR);
@@ -31,7 +31,7 @@ void sadistic::EmpiricalLAF::drawRotarySlider (Graphics& g, int x, int y, int wi
     auto angle = rotaryStartAngle + sliderPos * (rotaryEndAngle - rotaryStartAngle);
     auto& eSlider { static_cast<EmpiricalSlider&>(slider) };
     bool left { eSlider.isLeft };
-    Rectangle<float> r (x, y, width, height);
+    Rectangle<float> r { Rectangle<int>(x, y, width, height).toFloat() };
     Path needles[numNeedles];
     if (!eSlider.isSmall) {
         g.setColour(Colour(Colours::black.withAlpha(0.5f)));
@@ -54,13 +54,13 @@ void sadistic::EmpiricalLAF::drawRotarySlider (Graphics& g, int x, int y, int wi
     if(eSlider.isSmall) {
         Path ring;
         ring.startNewSubPath(slider.getHeight()/2.f, 0.f);
-        ring.addCentredArc(r.getCentreX(), r.getCentreY(), slider.getHeight()/2.f - 6.f, slider.getHeight()/2.f - 6.f, 0.f, left ? MathConstants<float>::pi : 0.f, left ? MathConstants<float>::twoPi : MathConstants<float>::pi, true);
+        ring.addCentredArc(r.getCentreX(), r.getCentreY(), slider.getHeight()/2.f - 6.f, slider.getHeight()/2.f - 6.f, 0.f, left ? pi<float> : 0.f, left ? twoPi<float> : pi<float>, true);
         g.setColour(Colours::darkgrey.darker().withAlpha(0.7f));
-        g.strokePath (ring, PathStrokeType (13.f), AffineTransform::translation(left ? slider.getHeight()/2 : -slider.getHeight()/2, 0));
+        g.strokePath (ring, PathStrokeType (13.f), AffineTransform::translation(static_cast<float>(left ? slider.getHeight()/2 : -slider.getHeight()/2), 0.f));
         const float totalDegrees { degreesToRadians(270.f) };
         g.setColour (Colour(Colours::white));
         for (int i = 0; i < 12; i++)
-            g.fillPath (needles[i], AffineTransform::rotation (angle - i * totalDegrees/12.f + degreesToRadians(90.f), r.getCentreX(), r.getCentreY()).translated(left ? slider.getHeight()/2 : -slider.getHeight()/2, 0));
+            g.fillPath (needles[i], AffineTransform::rotation (angle - i * totalDegrees/12.f + degreesToRadians(90.f), r.getCentreX(), r.getCentreY()).translated(static_cast<float>(left ? slider.getHeight()/2 : -slider.getHeight()/2), 0.f));
     }
     else {
         auto degreesBetweenTicks { 330.f / (eSlider.isLeft ? 110.f : 100.f) };
@@ -116,7 +116,7 @@ void sadistic::FilterLAF::drawRotarySlider (Graphics& g, int x, int y, int, int,
     auto transform = juce::AffineTransform:: rotation (toAngle, bounds.getCentreX(), bounds.getCentreY());
     icon->setTransformToFit (bounds.toFloat(), RectanglePlacement::centred);
     icon->setTransform(icon->getTransform().followedBy(transform));
-    icon->drawAt(g, x, y, 1.f);//
+    icon->drawAt(g, static_cast<float>(x), static_cast<float>(y), 1.f);
     g.setColour(colour);
 }
 
