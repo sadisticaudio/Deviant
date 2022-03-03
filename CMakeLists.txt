@@ -1,8 +1,11 @@
 cmake_minimum_required(VERSION 3.14)
 project(Deviant VERSION 1.0.0)
 
-# Paths are defined here, alter as necessary... I attempted some cmake hackery to avoid having to set these manually.  I failed. 
-# Other parts of this file will most likely need/want to be tailored as well.  Any feedback to improve this procedure would be appreciated.
+# Disclaimer: much of this has been nicked from other JUCE users, thanks sudara!
+
+# I attempted some CMAKE hackery to avoid having to set these variables below manually.  I failed.  Seemed most healthy for me mentally to have this group of paths that can be altered by anyone cloning this repo... 
+# Other parts of this file will most likely need/want to be tailored as well, such as the info in "juce_add_plugin".  Any feedback that could alleviate my CMAKE pain would be appreciated.
+
 IF (WIN32)
     set(JUCE_LOCATION "C:/Users/frye/Documents/JUCE")
     set(VST_COPY_LOCATION "C:/Program Files (x86)/Common Files/VST")
@@ -10,12 +13,16 @@ IF (WIN32)
     set(VST2_SDK_LOCATION "C:/Users/frye/CODE/SDKs/VST3_SDK/VST2_SDK")
     set(AUDIO_PROJECTS_LOCATION "C:/Users/frye/Music/Projects")
 ELSE()
+    set(APPLE_CODE_SIGN_IDENTITY "Developer ID Application: Benjamin Kelley (NXW2SG7JJ4)")
+    set(APPLE_ID "NXW2SG7JJ4")
     set(JUCE_LOCATION "$ENV{HOME}/Documents/JUCE")
     set(VST_COPY_LOCATION "/Library/Audio/Plug-Ins/VST")
     set(VST3_COPY_LOCATION "/Library/Audio/Plug-Ins/VST3")
     set(VST2_SDK_LOCATION "$ENV{HOME}/CODE/SDKs/VST3_SDK/VST2_SDK")
     set(AUDIO_PROJECTS_LOCATION "$ENV{HOME}/Music/Projects/Reaper")
-    set(DEBUG_APP "/Applications/REAPER64.app")
+    set(AU_XCODE_DEBUG_APP "/Applications/Logic Pro X.app")
+    set(VST_XCODE_DEBUG_APP "/Applications/Ableton Live 10 Suite.app")
+    set(VST3_XCODE_DEBUG_APP "/Applications/REAPER64.app")
     set(DEBUG_ARGS "${AUDIO_PROJECTS_LOCATION}/DeviantTestRadiohead/DeviantTestRadiohead.RPP")
 ENDIF()
 
@@ -36,6 +43,8 @@ set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "Targets")
 # Create a /Modules directory with all the JUCE Module code
 option(JUCE_ENABLE_MODULE_SOURCE_GROUPS "Show all module sources in IDE projects" ON)
 
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/Resources/Info.plist" plist_content_to_merge)
+
 add_subdirectory(${JUCE_LOCATION} JUCE)
 juce_set_vst2_sdk_path(${VST2_SDK_LOCATION})
 juce_add_plugin(Deviant
@@ -46,12 +55,12 @@ juce_add_plugin(Deviant
     PRODUCT_NAME "Deviant"
     COMPANY_COPYRIGHT "copyright Sadistic Algorithms, LLC, 2020"
     COMPANY_EMAIL "support@sadisticaudio.com"
-#    DOCUMENT_EXTENSIONS xml wav
     FORMATS AU VST VST3
     COPY_PLUGIN_AFTER_BUILD TRUE
     AU_COPY_DIR "/Library/Audio/Plug-Ins/Components"
     VST_COPY_DIR "${VST_COPY_LOCATION}"
     VST3_COPY_DIR "${VST3_COPY_LOCATION}"
+    #PLIST_TO_MERGE "${plist_content_to_merge}"
     HARDENED_RUNTIME_ENABLED TRUE
     IS_SYNTH FALSE
     EDITOR_WANTS_KEYBOARD_FOCUS FALSE
@@ -91,15 +100,22 @@ endforeach()
 foreach(target Deviant_AU Deviant_VST Deviant_VST3)
     if(TARGET ${target})
         set_target_properties(${target} PROPERTIES 
-            XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "Developer ID Application: Benjamin Kelley (NXW2SG7JJ4)"
-            XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "NXW2SG7JJ4"
+            XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "${APPLE_CODE_SIGN_IDENTITY}"
+            XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "${APPLE_ID}"
             XCODE_ATTRIBUTE_ENABLE_HARDENED_RUNTIME YES
             XCODE_ATTRIBUTE_OTHER_CODE_SIGN_FLAGS --timestamp
-            OSX_ARCHITECTURES "arm64;x86_64"
-            XCODE_SCHEME_EXECUTABLE "${DEBUG_APP}"
-            XCODE_SCHEME_ARGUMENTS "${DEBUG_ARGS}")
+            OSX_ARCHITECTURES "arm64;x86_64")
     endif()
 endforeach()
+
+set_target_properties(Deviant_AU PROPERTIES 
+            XCODE_SCHEME_EXECUTABLE "${AU_XCODE_DEBUG_APP}")
+
+set_target_properties(Deviant_VST PROPERTIES 
+            XCODE_SCHEME_EXECUTABLE "${VST_XCODE_DEBUG_APP}")
+
+set_target_properties(Deviant_VST3 PROPERTIES 
+            XCODE_SCHEME_EXECUTABLE "${VST3_XCODE_DEBUG_APP}")
 
 juce_add_binary_data(BinaryData HEADER_NAME SadisticData.h NAMESPACE Data SOURCES ${resources})
 
