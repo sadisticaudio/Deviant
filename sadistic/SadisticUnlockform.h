@@ -41,8 +41,13 @@ namespace sadistic {
         String getPersistenceFilePath() {
             File homePath { File::getSpecialLocation(File::userHomeDirectory) };
             std::vector<File> files {
+#if JUCE_WINDOWS
+                { { File(File::getSpecialLocation(File::userApplicationDataDirectory).getFullPathName() + "/Sadistic Audio/persistentData.xml") } },
+                { { File(File::getSpecialLocation(File::userMusicDirectory).getFullPathName() + "/.sadisticaudio/persistentData.xml") } }
+#elif JUCE_MAC
                 { { File(File::getSpecialLocation(File::userApplicationDataDirectory).getFullPathName() + "/Application Support/Sadistic Audio/persistentData.xml") } },
                 { { File(File::getSpecialLocation(File::userMusicDirectory).getFullPathName() + "/.sadisticaudio/persistentData.xml") } }
+#endif
             };
             for(size_t i = 0; i < files.size(); ++i) {
                 auto result = files[i].create();

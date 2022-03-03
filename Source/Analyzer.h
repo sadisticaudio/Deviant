@@ -18,8 +18,7 @@ namespace sadistic {
             
             void prepare (const ProcessSpec&) { reset(); }
             void reset() {
-                //memset(scopeData, 0.f, sizeof(scopeData));
-                std::fill(scopeData, scopeData + sizeof(scopeData), 0.f);
+                std::fill(scopeData, scopeData + sizeof(scopeData)/sizeof(float), 0.f);
                 rendererBuffer.flush();
             }
             
