@@ -21,10 +21,6 @@ sadistic::DeviantEditor::DeviantEditor (Deviant& p) : AudioProcessorEditor (&p),
 }
 
 void sadistic::DeviantEditor::timerCallback() {
-//    if(deviant.marketplaceStatus.isUnlocked() || authorizer->justGotUnlocked) {
-//        stopTimer();
-//        if(authorizer) authorizer.reset();
-//    }
     if(deviant.marketplaceStatus.isUnlocked()) {
         stopTimer();
         if(authorizer) authorizer.reset();

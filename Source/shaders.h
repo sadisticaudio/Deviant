@@ -9,7 +9,7 @@ void main() {
 static const char* moonGeometryShader = R"(
 #version 330 core
 #define WAVE_RADIUS 0.008
-#define WAVE_GIRTH_RESOLUTION 12
+#define WAVE_GIRTH_RESOLUTION 3
 #define PI 3.1415926538
 #define GIRTH_ANGLE_OFFSET (2.0 * PI / float (WAVE_GIRTH_RESOLUTION))
 layout (triangles) in;

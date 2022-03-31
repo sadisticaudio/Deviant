@@ -69,15 +69,13 @@ namespace sadistic {
             AudioBuffer<FloatType> mainBuffer { buffer.getArrayOfWritePointers(), channels, samples };
             m.processBlock(mainBuffer, oscilloscopeFifo, bypassed);
         }
-
+        
+        SadisticMarketplaceStatus marketplaceStatus { "iAnt" };
     private:
         DeviantMembers<double> membersD;
         DeviantMembers<float> membersF;
         UndoManager undoManager;
         APVTS apvts;
-    public:
-        SadisticMarketplaceStatus marketplaceStatus { "iAnt" };
-    private:
         LongFifo<float> oscilloscopeFifo[2]{};
         
         JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Deviant)

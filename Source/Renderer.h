@@ -22,8 +22,10 @@ namespace sadistic {
         ~ScopeRenderer() override { openGLContext.detach(); }
         void openGLContextClosing() override { moonShader->release(); waveShader->release(); moonTexture.release(); }
 
-        void getMatrix(float angle = 1.f) {
-            const auto rotation { Matrix3D<float>::rotation({ MathConstants<float>::halfPi/4.f/angle, MathConstants<float>::halfPi/2.f, 0.f }) };
+        void getMatrix(float = 1.f) {
+//        void getMatrix(float angle = 1.f) {
+//            const auto rotation { Matrix3D<float>::rotation({ MathConstants<float>::halfPi/4.f/angle, MathConstants<float>::halfPi/2.f, 0.f }) };
+            const auto rotation { Matrix3D<float>::rotation({ 0.f, 0.f, 0.f }) };
             const auto view { Matrix3D<float>(Vector3D<float>(0.0f, 0.0f, -10.0f)) }, viewMatrix { rotation * view };
             const auto scaleFactor { 4.f }, w { 1.f / scaleFactor }, h { w * 1.2f * getLocalBounds().toFloat().getAspectRatio (false) };
             const auto projectionMatrix { Matrix3D<float>::fromFrustum (-w, w, -h, h, 4.0f, 20.0f) };
@@ -86,6 +88,8 @@ namespace sadistic {
                 wUniforms["matrix"]->setMatrix4 (matrix.mat, 1, false);
                 
                 glDrawArrays(GL_TRIANGLES, 0, 3 * (scopeSize-1));
+                glDrawBuffer(GL_AUX0);
+                glReadBuffer(GL_AUX0);
                 
                 moonShader->use();
                 mUniforms["colour"]->set(c.getFloatRed(), c.getFloatGreen(), c.getFloatBlue());

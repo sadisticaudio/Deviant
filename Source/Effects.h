@@ -6,16 +6,19 @@ namespace sadistic {
     template<typename F> F rround(F f) { return f > F(0) ? floor (f + F(0.5)) : ceil(f - F(0.5)); }
     template<typename F> F fastatan( F x ) { return (F(2)/MathConstants<F>::pi) * atan(x * MathConstants<F>::halfPi); }
     
+    static constexpr float attenuationArray[112] { 1.f, 0.969972f, 0.93633f, 0.895768f, 0.840769f, 0.788895f, 0.719035f, 0.650585f, 0.603181f, 0.556584f, 0.50063f, 0.455201f, 0.400208f, 0.355584f, 0.301276f, 0.287243f, 0.26345f, 0.259869f, 0.256477f, 0.253254f, 0.250183f, 0.247251f, 0.244444f, 0.241753f, 0.239167f, 0.236678f, 0.234279f, 0.231964f, 0.229726f, 0.227561f, 0.225463f, 0.223428f, 0.221453f, 0.219534f, 0.217668f, 0.215852f, 0.214083f, 0.212358f, 0.210676f, 0.209034f, 0.20743f, 0.205863f, 0.204331f, 0.202832f, 0.201364f, 0.199927f, 0.198519f, 0.197139f, 0.195785f, 0.194458f, 0.193155f, 0.191876f, 0.190619f, 0.189385f, 0.188172f, 0.186979f, 0.185806f, 0.184653f, 0.183518f, 0.1824f, 0.1813f, 0.180217f, 0.17915f, 0.178098f, 0.177062f, 0.176041f, 0.175034f, 0.174041f, 0.173061f, 0.172095f, 0.171141f, 0.1702f, 0.169271f, 0.168354f, 0.167448f, 0.166554f, 0.16567f, 0.164797f, 0.163935f, 0.163082f, 0.16224f, 0.161407f, 0.160583f, 0.159769f, 0.158963f, 0.158167f, 0.157379f, 0.156599f, 0.155827f, 0.155064f, 0.154308f, 0.15356f, 0.15282f, 0.152087f, 0.151361f, 0.150643f, 0.149931f, 0.149226f, 0.148527f, 0.147835f, 0.14715f, 0.146471f, 0.145798f, 0.145131f, 0.14447f, 0.143815f, 0.143165f, 0.142521f, 0.141883f, 0.14125f, 0.140622f, 0.14f };
+    
     struct Atan {
-        static void calculateCoefficients(float(& coeffs)[maxCoeffs]) {
-            auto& [drive, lo, hi, deviation, mDrive, mag, attenuation, blend] = coeffs;
-            mDrive = powf(drive/111.f, 2.f);
-            attenuation = jmap(powf(drive/111.f, 0.08f), 1.f, 0.14f);
-        }
         template<typename F> static F processSample(const F sample, const float (&coeffs)[maxCoeffs]) {
             const auto& [drive, lo, hi, deviation, mDrive, mag, attenuation, blend] = coeffs;
             const auto x { static_cast<float>(sample) };
             return fastatan(x * (1.f + mDrive * 144.f)) * attenuation * blend + x * (1.f - blend);
+        }
+        static void calculateCoefficients(float(& coeffs)[maxCoeffs]) {
+            auto& [drive, lo, hi, deviation, mDrive, mag, attenuation, blend] = coeffs;
+            mDrive = powf(drive/111.f, 2.f);
+//            attenuation = jmap(powf(drive/111.f, 0.08f), 1.f, 0.14f);
+            attenuation = attenuationArray[roundToInt(drive)];
         }
     };
     
@@ -36,7 +39,7 @@ namespace sadistic {
         static void calculateCoefficients(float(& coeffs)[maxCoeffs]) {
             auto& [drive, lo, hi, deviation, mDrive, mag, attenuation, blend] = coeffs;
             mDrive = powf(drive/111.f, 2.f);
-            attenuation = jmap(powf(mDrive, 0.04f), 1.f, 0.14f);
+            attenuation = attenuationArray[roundToInt(drive)];
         }
         template<typename F> static F processSample(const F sample, const float (&coeffs)[maxCoeffs]) {
             const auto& [drive, lo, hi, deviation, mDrive, mag, attenuation, blend] = coeffs;
@@ -62,7 +65,7 @@ namespace sadistic {
         static void calculateCoefficients(float(& coeffs)[maxCoeffs]) {
             auto& [drive, lo, hi, deviation, mDrive, mag, attenuation, blend] = coeffs;
             mDrive = drive/111.f;
-            attenuation = jmap(powf(drive/111.f, 0.08f), 1.f, 0.14f);
+            attenuation = attenuationArray[roundToInt(drive)];
         }
         template<typename F> static F processSample(const F sample, const float (&coeffs)[maxCoeffs]) {
             const auto& [drive, lo, hi, deviation, mDrive, mag, attenuation, blend] = coeffs;
@@ -111,8 +114,9 @@ namespace sadistic {
             coeffIdx = currentIndex;
         }
         template<typename FloatType> void processSamples(AudioBuffer<FloatType>& buffer) {
-            if constexpr (std::is_same<F, FloatType>::value) {
-                
+//            if constexpr (std::is_same<F, FloatType>::value) {
+            if constexpr (std::is_same_v<F, FloatType>) {
+            
                 mDrive = coeffs[0];
 
                 wanderer.setDeviation(coeffs[3]);
@@ -122,8 +126,8 @@ namespace sadistic {
                 spectralInversionDelay.process(buffer, spectralInversionBuffer);
                 
                 AudioBlock<FloatType> block { buffer }, spectralInversionBlock { spectralInversionBuffer };
-                
                 filter.process(ProcessContextReplacing<F>(block));
+                
                 //subtract out the filtered signal from the spectralInversionBlock
                 spectralInversionBlock -= block;
                 setMagnitudeCoefficient(jlimit(0.00001f, 1.f, static_cast<float>(buffer.getMagnitude(0, buffer.getNumSamples()))));

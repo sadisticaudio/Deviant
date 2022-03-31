@@ -1,9 +1,9 @@
 #pragma once
-#if (SADISTIC_PRO == 1)
+//#if (SADISTIC_PRO == 1)
 #include "../../Source/SadisticUnlockform.h"
-#else
-#include "../sadistic/SadisticUnlockform.h"
-#endif
+//#else
+//#include "../sadistic/SadisticUnlockform.h"
+//#endif
 
 namespace sadistic {
     
@@ -67,7 +67,31 @@ namespace sadistic {
     }
     
     template <typename FloatType>
-    typename FIR::Coefficients<FloatType>::Ptr makeBandpass(FloatType lowFrequency, FloatType highFrequency, double sampleRate, size_t order, typename WindowingFunction<FloatType>::WindowingMethod type, FloatType beta = 2.0) {
+    typename FIR::Coefficients<FloatType> makeZoom (FloatType lowFrequency, FloatType highFrequency, double sampleRate, int order, typename WindowingFunction<FloatType>::WindowingMethod type, FloatType beta = 2.0) {
+        jassert (sampleRate > 0);
+        jassert (lowFrequency > 0 && lowFrequency <= sampleRate * 0.5);
+        jassert (highFrequency > 0 && highFrequency <= sampleRate * 0.5);
+        auto result = FIR::Coefficients<FloatType> (size_t(order + 1));
+        auto* c = result.getRawCoefficients();
+        auto normalisedLowFrequency = lowFrequency / sampleRate;
+        auto normalisedHighFrequency =  highFrequency / sampleRate;
+        
+        for (int i = 0; i <= order; ++i) {
+            if (i == order / 2) c[i] = static_cast<FloatType> ((normalisedHighFrequency - normalisedLowFrequency) * 2);
+            
+            else {
+                auto indice = MathConstants<double>::pi * (static_cast<double> (i) - 0.5 * static_cast<double> (order));
+                c[i] = static_cast<FloatType> ((std::sin (2.0 * indice * normalisedHighFrequency) - std::sin (2.0 * indice * normalisedLowFrequency)) / indice);
+            }
+        }
+        
+        WindowingFunction<FloatType> theWindow (size_t(order + 1), type, false, beta);
+        theWindow.multiplyWithWindowingTable (c, size_t(order + 1));
+        return result;
+    };
+    
+    template <typename FloatType>
+    typename FIR::Coefficients<FloatType>::Ptr makeBandpass(FloatType lowFrequency, FloatType highFrequency, double sampleRate, size_t order, typename WindowingFunction<FloatType>::WindowingMethod type = WindowingFunction<FloatType>::kaiser, FloatType beta = 2.0) {
         jassert (sampleRate > 0);
         jassert (lowFrequency > 0 && lowFrequency <= sampleRate * 0.5);
         jassert (highFrequency > 0 && highFrequency <= sampleRate * 0.5);
